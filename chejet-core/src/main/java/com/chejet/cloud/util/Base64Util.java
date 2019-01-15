@@ -1,0 +1,40 @@
+package com.chejet.cloud.util;
+
+import com.chejet.cloud.exception.BaseException;
+import org.apache.commons.lang3.StringUtils;
+
+import java.util.Base64;
+
+/**
+ * @author Neo.fang
+ * @creatTime 2018/12/27 0027
+ */
+public class Base64Util {
+
+    // 使用基本编码
+
+    public static void main(String[] args) {
+        System.out.println(encoder("123456"));
+        System.out.println(decoder("MTIzUXE9MTIzPw=="));
+    }
+
+    public static String encoder(String str) {
+        if (StringUtils.isBlank(str)){
+            return "";
+        }
+        return Base64.getEncoder().encodeToString(str.getBytes());
+    }
+
+    public static String decoder(String str) {
+        if (StringUtils.isBlank(str)){
+            return "";
+        }
+        byte[] base64decodedBytes = Base64.getDecoder().decode(str);
+        try {
+            return new String(base64decodedBytes, "utf-8");
+        }catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+}

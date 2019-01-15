@@ -1,0 +1,102 @@
+package com.chejet.cloud.controller;
+
+import com.chejet.cloud.common.ErrorCodeEnum;
+import com.chejet.cloud.exception.BaseException;
+import com.chejet.cloud.po.Attach;
+import com.chejet.cloud.response.ApiResp;
+import com.chejet.cloud.response.ResultBuilder;
+import com.chejet.cloud.service.AttachService;
+import com.chejet.cloud.util.ImageUtil;
+import org.apache.commons.io.IOUtils;
+import org.apache.tomcat.util.http.fileupload.servlet.ServletFileUpload;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+
+import javax.servlet.http.HttpServletRequest;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.util.Objects;
+
+/**
+ * @author Neo.fang
+ * @creatTime 2018/10/15 0015
+ */
+@CrossOrigin(origins = "*", maxAge = 3600)
+@RestController
+@RequestMapping(value = "/file")
+public class FileUploadController {
+
+//    @Autowired
+//    private FileUploadConfig fileUploadConfig;
+
+    private static final String GET_SERVICE_DIR = "/public/image/"; //服务器请求文件的路由(与请求保持一致，可加入随机字符串干扰)
+    private static final String STORE_FILE_DIR = "/usr/local/image/"; // LINUX文件保存的路径
+    private static final String STORE_FILE_DIR_BASE = "D:/meiyou"; //WINDOWS文件仓库目录
+    private static String BUCKETNAME = "united-centre"; // 存储空间(仓库中的分类目录)
+    @Autowired
+    private AttachService attachService;
+
+
+    @RequestMapping(value = "/upload/{type}", method = RequestMethod.POST)
+    public ApiResp upload(HttpServletRequest request, @PathVariable Integer type) throws Exception {
+
+        // 判断enctype属性是否为multipart/form-data
+        boolean isMultipart = ServletFileUpload.isMultipartContent(request);
+        if (!isMultipart) {
+            throw new BaseException(ErrorCodeEnum.MULTIPART_TYPE_ERROR);
+        }
+
+        MultipartHttpServletRequest multipartRequest = (MultipartHttpServletRequest) request;
+        MultipartFile file = multipartRequest.getFile("file");
+        if (file == null || file.getSize() <= 0) {
+            throw new BaseException(ErrorCodeEnum.FILE_IS_EMPTY);
+        }
+        String imageFormat = ImageUtil.getImageFormat(file.getInputStream());
+        if (!("jpg".equalsIgnoreCase(imageFormat) || "png".equalsIgnoreCase(imageFormat) || "jpeg".equalsIgnoreCase(imageFormat))){
+            throw new BaseException(ErrorCodeEnum.PICTURE_FORMAT_IS_NOT_SUPPORTED);
+        }
+
+        InputStream in = file.getInputStream();
+        String originalFilename = file.getOriginalFilename();
+        String sub = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+        String name = System.currentTimeMillis() + sub;
+
+        String filePath = STORE_FILE_DIR + File.separator + BUCKETNAME + File.separator + name;
+
+        try {
+            //写入文件到当前服务器磁盘
+            File uploadedFile = new File(filePath);
+            // 没有文件夹就创建
+            File parentFile = uploadedFile.getParentFile();
+            if (!parentFile.exists()){
+                parentFile.mkdirs();
+            }
+
+            FileOutputStream out = new FileOutputStream(uploadedFile);
+            //BufferedOutputStream bos = new BufferedOutputStream(out);
+
+            //使用IOUtils工具输出， 也就是copy文件
+            IOUtils.copy(in, out);
+
+            in.close();
+            out.close();
+        }catch (Exception e){
+            throw new BaseException(ErrorCodeEnum.STORAGE_PATH_ERROR);
+        }
+        // String hostAddress = InetAddress.getLocalHost().getHostAddress();
+
+        String basePath = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
+        String link = basePath + GET_SERVICE_DIR + BUCKETNAME + "/" + name;
+
+        /**
+         * 存入文件附件管理
+         */
+        Attach attach = attachService.saveAttach(link, type);
+
+        return ResultBuilder.buildDateSuccess(attach);
+    }
+
+}

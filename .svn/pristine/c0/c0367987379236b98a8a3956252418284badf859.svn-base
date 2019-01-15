@@ -1,0 +1,182 @@
+findAppRoleByCompany
+===
+	SELECT A.id as id , A.name as name, A.display_name,A.icon_url,A.exhibit_image_url,
+	C.id as roleId, C.name as roleName,C.company_id as companyId, c.tenant_id as tenantId  FROM sys_app A
+	INNER JOIN rel_company_app B ON 
+	A.id=B.app_id
+	LEFT JOIN sys_group_app_role C ON A.id = C.app_id
+	WHERE
+	B.company_id=#companyId#
+	AND B.tenant_id=#tenantId#
+	
+findAppModuleByManagerIdAndAppId
+===
+	SELECT A.app_id as appId,C.name as appName,A.deploymodule_id,B.name as deploymoduleName, A.manager_id , D.name FROM 	rel_manager_deploymodule A
+	LEFT JOIN sys_app_deploymodule B ON  A.deploymodule_id = B.id
+	LEFT JOIN sys_app C ON C.id = B.app_id 
+	LEFT JOIN sys_company_manager D  ON D.id = A.manager_id
+	WHERE 1=1
+	@if(!isEmpty(managerId)){
+		AND A.manager_id=#managerId#
+	@}
+	@if(!isEmpty(appId)){
+		AND A.app_id=#appId#
+	@}
+	
+	
+getCompanyAppList
+===
+SELECT DISTINCT B.*,T.app_status,T.expire_time
+FROM rel_company_app A 
+LEFT JOIN  sys_app B ON B.id = A.app_id 
+LEFT JOIN rel_tenant_app T ON T.app_id=A.app_id 
+where A.company_id =#companyId#
+AND T.tenant_id=#tenantId#
+ 	@if(!isEmpty(appId)){
+ 		AND A.app_id=#appId#
+ 	@}
+	
+getCompanyAppDict
+===
+
+	SELECT B.id, B.name  FROM rel_company_app A LEFT JOIN  sys_app B ON B.id = A.app_id where A.company_id =#companyId#;
+
+getAppDeployModuleList
+===
+SELECT D.* FROM rel_company_app TA
+LEFT JOIN sys_app_deploymodule D ON D.id=TA.deploymodule_id
+WHERE 
+TA.company_id=#companyId#
+AND TA.app_id=#appId#
+	
+	
+query_tenant_app_list
+===
+SELECT
+        a.*,b.version_id AS `market_version_id`
+    FROM
+        sys_app AS a
+        JOIN rel_tenant_app AS b ON a.id = b.app_id AND (b.app_status = 0 OR b.app_status = 2)
+        JOIN sys_tenant AS c ON c.id = b.tenant_id 
+        AND c.id =#tenantId#;
+
+query_app_deploy_module_list
+===
+SELECT
+    a.* 
+FROM
+    sys_app_deploymodule AS a
+    JOIN rel_version_deploymodule AS b ON b.deploymodule_id = a.id
+    JOIN sys_app_version AS c ON c.id = b.version_id
+    JOIN rel_tenant_app AS d ON ( d.version_id = c.id AND d.version_id = #versionId# AND d.tenant_id=#tenantId#) 
+WHERE
+    d.app_id = #appId#
+    @if(!isEmpty(companyId)) {
+    AND a.id NOT IN (SELECT deploymodule_id FROM rel_company_app WHERE company_id = #companyId# AND app_id = #appId#)
+    @}
+
+query_company_by_page_for_manager
+===
+* 企业管理员管理企业分页列表
+```sql
+SELECT
+    a.*,c.url_name AS logo_url,d.url_name AS certificate_url
+FROM
+	sys_company AS a
+	JOIN sys_company_manager AS b ON b.company_id = a.id
+	AND b.user_id = #userId#
+	AND b.tenant_id = #tenantId#
+	@if(!isEmpty(companyName)){
+    	  AND a.`name` like #'%'+companyName+'%'#
+    @}
+    @if(!isEmpty(contact)){
+          AND a.contact_person like #'%'+contact+'%'#
+    @}
+    @if(!isEmpty(telephone)){
+          AND a.contact_person_phone like #'%'+telephone+'%'#
+    @}
+    LEFT JOIN sys_attach AS c ON a.logo_url_id=c.id
+    LEFT JOIN sys_attach AS d ON a.certificate_url_id=d.id
+```
+
+query_company_by_page_for_manager$count
+===
+* 企业管理员管理企业分页列表条数统计
+```sql
+SELECT
+	count(1)
+FROM
+	sys_company AS a
+	JOIN sys_company_manager AS b ON b.company_id = a.id 
+	AND b.user_id = #userId#
+	AND b.tenant_id = #tenantId#
+	@if(!isEmpty(companyName)){
+    	  AND a.`name` like #'%'+companyName+'%'#
+    @}
+    @if(!isEmpty(contact)){
+          AND a.contact_person like #'%'+contact+'%'#
+    @}
+    @if(!isEmpty(telephone)){
+          AND a.contact_person_phone like #'%'+telephone+'%'#
+    @}
+    LEFT JOIN sys_attach AS c ON a.logo_url_id=c.id
+    LEFT JOIN sys_attach AS d ON a.certificate_url_id=d.id
+```
+
+
+query_company_subtree
+===
+* 根据左右值查询所有企业节点
+```sql
+SELECT
+	* 
+FROM
+	sys_company 
+WHERE
+	tenant_id = #tenantId# AND 
+	left_value >= #leftValue# AND 
+	right_value <= #rightValue#;
+```
+
+update_company_left_del_subtree
+===
+* 更新去掉子树后的左值
+```sql
+UPDATE sys_company 
+SET left_value = left_value - #value#
+WHERE left_value > #leftValue# AND tenant_id=#tenantId#
+```
+
+update_company_right_del_subtree
+===
+* 更新去掉子树后的右值
+```sql
+UPDATE sys_company 
+SET right_value = right_value - #value# 
+WHERE right_value > #leftValue# AND tenant_id=#tenantId#
+```
+
+update_company_left_add_subtree
+===
+* 更新重新插入子树后的左值
+```sql
+UPDATE sys_company 
+SET left_value = left_value + #value#
+WHERE left_value > #leftValue# AND tenant_id=#tenantId#
+```
+update_company_right_add_subtree
+===
+* 更新重新插入子树后的右值
+```sql
+UPDATE sys_company 
+SET right_value = right_value+#value# 
+WHERE right_value > #leftValue# AND tenant_id=#tenantId#
+```
+
+findCompanyManager
+===
+SELECT DISTINCT M.*,R.app_id,A.`name`AS app_name FROM sys_company_manager M
+LEFT JOIN rel_manager_deploymodule R ON R.manager_id = M.id
+LEFT JOIN sys_app A ON A.id = R.app_id
+WHERE M.company_id = #companyId# 
+AND M.tenant_id =#tenantId# 

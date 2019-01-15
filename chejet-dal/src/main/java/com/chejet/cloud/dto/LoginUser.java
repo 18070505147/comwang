@@ -1,0 +1,167 @@
+package com.chejet.cloud.dto;
+
+import java.util.Date;
+import java.util.List;
+
+/**
+ * @author Neo.fang
+ * @creatTime 2018/12/13 0013
+ */
+public class LoginUser {
+
+    /**
+     * 登录状态 字典值：0-登录成功，1-密码错误
+     */
+    private boolean loginStatus;
+
+    /**
+     * 5分钟内登录密码错误次数
+     */
+    private Integer loginErrorCount;
+
+    /**
+     * 用户id
+     */
+    private Long userId;
+
+    /**
+     * 用户昵称
+     */
+    private String nickname;
+
+    /**
+     * 用户头像图片链接
+     */
+    private String portraitUrl;
+
+    /**
+     * 应用id
+     */
+    private Long appId;
+
+    /**
+     * 用户token
+     */
+    private String userToken;
+
+    /**
+     * 登录时间
+     */
+    private Date loginTime;
+
+    /**
+     * 是否修改密码 首次登陆是否修改密码：false-不需要，true-需要
+     */
+    private Boolean modifiedFlag;
+
+    /**
+     * 当前登录的租户
+     */
+    private Long tenantId;
+
+    /**
+     * 当前应用的公司
+     */
+    private Long companyId;
+
+    /**
+     * 用户租户角色列表
+     */
+    private List<UserGroup> userGroups;
+
+    public List<UserGroup> getUserGroups() {
+        return userGroups;
+    }
+
+    public void setUserGroups(List<UserGroup> userGroups) {
+        this.userGroups = userGroups;
+    }
+
+    public boolean isLoginStatus() {
+        return loginStatus;
+    }
+
+    public void setLoginStatus(boolean loginStatus) {
+        this.loginStatus = loginStatus;
+    }
+
+    public Integer getLoginErrorCount() {
+        return loginErrorCount;
+    }
+
+    public void setLoginErrorCount(Integer loginErrorCount) {
+        this.loginErrorCount = loginErrorCount;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public String getNickname() {
+        return nickname;
+    }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public String getPortraitUrl() {
+        return portraitUrl;
+    }
+
+    public void setPortraitUrl(String portraitUrl) {
+        this.portraitUrl = portraitUrl;
+    }
+
+    public Long getAppId() {
+        return appId;
+    }
+
+    public void setAppId(Long appId) {
+        this.appId = appId;
+    }
+
+    public String getUserToken() {
+        return userToken;
+    }
+
+    public void setUserToken(String userToken) {
+        this.userToken = userToken;
+    }
+
+    public Date getLoginTime() {
+        return loginTime;
+    }
+
+    public void setLoginTime(Date loginTime) {
+        this.loginTime = loginTime;
+    }
+
+    public Boolean getModifiedFlag() {
+        return modifiedFlag;
+    }
+
+    public void setModifiedFlag(Boolean modifiedFlag) {
+        this.modifiedFlag = modifiedFlag;
+    }
+
+    public Long getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(Long companyId) {
+        this.companyId = companyId;
+    }
+
+    public Long getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(Long tenantId) {
+        this.tenantId = tenantId;
+    }
+}

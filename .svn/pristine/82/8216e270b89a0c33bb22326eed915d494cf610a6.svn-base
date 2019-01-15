@@ -1,0 +1,31 @@
+package com.chejet.cloud.service;
+
+import java.util.List;
+
+import org.beetl.sql.core.engine.PageQuery;
+import com.chejet.cloud.common.CurrentUserInfo;
+import com.chejet.cloud.po.Employee;
+
+
+/**
+ * 员工管理biz接口
+ * 
+ * @author ansen.zhu@carlt.com.cn
+ * @date 2018/12/13
+ */
+public interface EmployeeService {
+
+	PageQuery<Employee> pageEmployee(Employee employee, CurrentUserInfo currentUser);
+	
+	public List<Employee> listEmployee(Employee employee, CurrentUserInfo currentUser);
+
+	boolean saveEmployee(Employee employee, CurrentUserInfo currentUser) throws Exception;
+
+	boolean deleteEmployee(Long companyId, Long employeeId, CurrentUserInfo currentUser) throws Exception;
+
+	public boolean editEmployee(Employee employee, CurrentUserInfo currentUser) throws Exception;
+	
+	Employee listEmployeePermisson(Long employeeId,Long appId, CurrentUserInfo currentUser)throws Exception;
+
+	public boolean editEmployeePermisson(Employee employee,CurrentUserInfo currentUser)throws Exception ;
+}

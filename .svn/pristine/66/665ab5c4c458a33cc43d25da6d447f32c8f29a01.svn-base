@@ -1,0 +1,98 @@
+package com.chejet.cloud.controller;
+
+import java.util.List;
+
+import org.beetl.sql.core.engine.PageQuery;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import com.alibaba.fastjson.JSONArray;
+import com.chejet.cloud.response.ApiResp;
+import com.chejet.cloud.service.CompanyService;
+import com.chejet.cloud.vo.AppModule;
+import com.chejet.cloud.po.CompanyManager;
+import com.chejet.cloud.po.RelManagerDeploymodule;
+
+/**
+ * 企业管理员api
+ * 
+ * @author ansen.zhu@carlt.com.cn
+ * @date 2018/12/15
+ */
+@RestController
+@RequestMapping(value = "/company_manager", produces = "application/json;charset=UTF-8")
+public class CompanyManagerController extends BaseController {
+	@Autowired
+	CompanyService companyService;
+
+	@RequestMapping(KEY_REMOVE)
+	public ApiResp remove(CompanyManager companyManager, Long appId) throws Exception {
+		boolean temp = companyService.deleteCompanyManager(companyManager, appId, currentUser());
+		if (temp == true) {
+			return success(DEL_SUCCESS_MSG);
+		} else {
+			return error(DEL_FAIL_MSG);
+		}
+	}
+	
+	@RequestMapping("/list/{companyId}")
+	public ApiResp list(@PathVariable Long companyId) throws Exception {
+		List<CompanyManager> voPage = companyService.listCompanyManager(companyId, currentUser());
+		if (voPage != null) {
+			return success(voPage, PAGE_SUCCESS_MSG);
+		} else {
+			return error(PAGE_FAIL_MSG);
+		}
+	}
+	
+	@RequestMapping("/save/{companyId}")
+	public ApiResp save(@PathVariable Long companyId,@RequestBody String payload) throws Exception {
+		JSONArray jArray = JSONArray.parseArray(payload);
+		List<CompanyManager> cmlist = jArray.toJavaList(CompanyManager.class);
+		boolean temp = companyService.saveCompanyManager(companyId, cmlist, currentUser());
+		if (temp) {
+			return success(SAVE_SUCCESS_MSG);
+		} else {
+			return error(SAVE_FAIL_MSG);
+		}
+	}
+	
+	@RequestMapping("/module/edit/{managerId}/{appId}")
+	public ApiResp edit( @PathVariable Long managerId,@PathVariable Long appId,@RequestBody String payload) throws Exception {
+		JSONArray jArray = JSONArray.parseArray(payload);
+		List<RelManagerDeploymodule> cmlist = jArray.toJavaList(RelManagerDeploymodule.class);
+		boolean temp = companyService.editManagerDeploymodule(managerId, appId, cmlist, currentUser());
+		if (temp) {
+			return success(SAVE_SUCCESS_MSG);
+		} else {
+			return error(SAVE_FAIL_MSG);
+		}
+	}
+	
+	@RequestMapping("/module/list/{managerId}/{appId}")
+	public ApiResp page(@PathVariable Long managerId, @PathVariable Long appId ) throws Exception {
+		List<AppModule> lam= companyService.getManagerDeploymodule(managerId, appId, currentUser());
+		if (lam != null) {
+			return success(lam, QUERY_SUCCESS_MSG);
+		} else {
+			return error(QUERY_FAIL_MSG);
+		}
+	}
+
+	/**
+	 * 为企业管理员查询所有租户下管理的企业
+	 * @param companyName
+	 * @param contact
+	 * @param telephone
+	 * @param pageNo
+	 * @param pageSize
+	 * @return
+	 */
+	@RequestMapping(value = "/company/page")
+	public ApiResp queryCompanyListByPage(@RequestParam(required = false) String companyName,
+										  @RequestParam(required = false) String contact,
+										  @RequestParam(required = false) String telephone,
+										  @RequestParam Integer pageNo,
+										  @RequestParam(defaultValue = "10") Integer pageSize){
+		return ApiResp.success(companyService.queryCompanyByPageForManager(currentUser(),companyName,contact,telephone,pageNo,pageSize));
+	}
+}

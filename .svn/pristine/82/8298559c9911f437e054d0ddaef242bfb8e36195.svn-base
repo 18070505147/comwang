@@ -1,0 +1,137 @@
+package com.chejet.cloud.controller;
+
+import java.sql.SQLException;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletResponse;
+
+import com.chejet.cloud.vo.EmployeeParaVO;
+import com.chejet.cloud.vo.IdVO;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.beetl.sql.core.engine.PageQuery;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import com.alibaba.fastjson.JSONObject;
+import com.chejet.cloud.excel.util.DateUtils;
+import com.chejet.cloud.excel.util.ExcelUtils;
+import com.chejet.cloud.excel.vo.Excel;
+import com.chejet.cloud.excel.vo.ExcelSheet;
+import com.chejet.cloud.exception.BaseException;
+import com.chejet.cloud.po.Employee;
+import com.chejet.cloud.response.ApiResp;
+import com.chejet.cloud.service.EmployeeService;
+import com.chejet.cloud.vo.EmployeeVO;
+
+import cn.hutool.core.date.DateUtil;
+
+/**
+ * 员工管理api
+ *
+ * @author ansen.zhu@carlt.com.cn
+ * @date 2018/12/13
+ */
+@RestController
+@RequestMapping(value = "/employee", produces = "application/json;charset=UTF-8")
+public class EmployeeController extends BaseController {
+    @Autowired
+    EmployeeService employeeService;
+
+    @RequestMapping(KEY_SAVE)
+    public ApiResp save(@RequestBody String payload) throws Exception {
+        Employee employee = JSONObject.parseObject(payload, Employee.class);
+        boolean temp = employeeService.saveEmployee(employee, currentUser());
+        if (temp) {
+            return success(SAVE_SUCCESS_MSG);
+        } else {
+            return error(SAVE_FAIL_MSG);
+        }
+    }
+
+    @RequestMapping(KEY_EDIT)
+    public ApiResp update(@RequestBody String payload) throws Exception {
+        Employee employee = JSONObject.parseObject(payload, Employee.class);
+        // update返回值
+        boolean temp = employeeService.editEmployee(employee, currentUser());
+        if (temp) {
+            return success(UPDATE_SUCCESS_MSG);
+        } else {
+            return error(UPDATE_FAIL_MSG);
+        }
+    }
+
+    @RequestMapping("/remove/{companyId}/{employeeId}")
+    public ApiResp remove(@PathVariable Long companyId, @PathVariable Long employeeId) throws Exception {
+        boolean temp = employeeService.deleteEmployee(companyId, employeeId, currentUser());
+        if (temp) {
+            // reomve operation
+            return success(DEL_SUCCESS_MSG);
+        } else {
+            return error(DEL_FAIL_MSG);
+        }
+    }
+
+    @RequestMapping(KEY_PAGE)
+    public ApiResp page(Employee employee) throws Exception {
+        PageQuery<Employee> voPage = employeeService.pageEmployee(employee, currentUser());
+        if (voPage != null) {
+            return success(voPage, PAGE_SUCCESS_MSG);
+        } else {
+            return error(PAGE_FAIL_MSG);
+        }
+    }
+
+    @RequestMapping("/permisson/list/{employeeId}/{appId}")
+    public ApiResp permissonList(@PathVariable Long employeeId, @PathVariable Long appId) throws Exception {
+        Employee em = employeeService.listEmployeePermisson(employeeId, appId, currentUser());
+        if (em != null) {
+            return success(em, PAGE_SUCCESS_MSG);
+        } else {
+            return error(PAGE_FAIL_MSG);
+        }
+    }
+
+    @RequestMapping("/permisson/edit")
+    public ApiResp updatePermisson(@RequestBody String payload) throws Exception {
+        Employee employee = JSONObject.parseObject(payload, Employee.class);
+        boolean temp = employeeService.editEmployeePermisson(employee, currentUser());// update返回值
+        if (temp) {
+
+            return success(UPDATE_SUCCESS_MSG);
+        } else {
+            return error(UPDATE_FAIL_MSG);
+        }
+    }
+
+    @RequestMapping("/export")
+    public void exportEmployee(Employee employee) throws Exception {
+        List<Employee> voList = employeeService.listEmployee(employee, currentUser());
+        if (voList != null) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("员工表-").append(DateUtils.date2Str(new Date(), DateUtils.DATE_FORMAT_SEC_E)).append(".xls");
+            ExcelUtils.exportExcel("员工表", sb.toString(), Employee.class, voList, getResponse());
+        }
+    }
+
+    /**
+     * 查询员工应用角色列表
+     *
+     * @param employeeId 员工ID
+     * @return
+     */
+    @RequestMapping(value = "/{employeeId}/app/role/{companyId}", method = RequestMethod.GET)
+    public ApiResp queryEmployeeAppRoleList(@PathVariable Long employeeId, @PathVariable Long companyId) {
+        return ApiResp.success(employeeService.queryEmployeeAppRoleList(employeeId, companyId));
+    }
+
+    @PostMapping(value = "/roles")
+    public ApiResp getRoles(@RequestBody IdVO idVO) {
+        return ApiResp.success(employeeService.getRoles(idVO));
+    }
+
+    @PostMapping(value = "/permission/save")
+    public ApiResp saveAdvancedAuthentication(@RequestBody EmployeeParaVO employeeParaVO) {
+        return ApiResp.success(employeeService.saveAdvancedAuthentication(employeeParaVO));
+    }
+}

@@ -1,0 +1,44 @@
+package com.chejet.cloud.vo;
+
+/**
+ * @Description
+ * @Date 2018/12/20 13:52
+ * @Version 1.0
+ */
+public class DeployModuleVO {
+    private Long id;
+
+    /**
+     * 配置包名称
+     */
+    private String name;
+
+    /**
+     * app编码 关联平台应用表
+     */
+    private Long appId;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Long getAppId() {
+        return appId;
+    }
+
+    public void setAppId(Long appId) {
+        this.appId = appId;
+    }
+}

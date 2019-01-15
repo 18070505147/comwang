@@ -1,0 +1,39 @@
+pageEmployee
+===
+	SELECT se.*, su.name, su.telephone,sd.`name` AS `department_name` FROM sys_employee se 
+	LEFT JOIN sys_user su ON se.user_id = su.id 
+	LEFT JOIN sys_department sd ON se.department_id=sd.id
+		WHERE se.company_id=#companyId#
+	@if(!isEmpty(telephone)){
+		AND	 su.telephone=#telephone#
+	@}
+	@if(!isEmpty(name)){
+		AND su.name=#name#
+	@}
+
+pageEmployee$count
+===
+	SELECT count(1) FROM sys_employee se 
+	LEFT JOIN sys_user su ON se.user_id = su.id 
+	LEFT JOIN sys_department sd ON se.department_id=sd.id
+		WHERE se.company_id=#companyId#
+	@if(!isEmpty(telephone)){
+		AND	 su.telephone=#telephone#
+	@}
+	@if(!isEmpty(name)){
+		AND su.name=#name#
+	@}
+
+	
+listEmployee
+===
+	SELECT se.*, su.name, su.telephone,sd.`name` AS `department_name` FROM sys_employee se 
+	LEFT JOIN sys_user su ON se.user_id = su.id 
+	LEFT JOIN sys_department sd ON se.department_id=sd.id
+		WHERE se.company_id=#companyId#
+	@if(!isEmpty(telephone)){
+		AND	 su.telephone=#telephone#
+	@}
+	@if(!isEmpty(name)){
+		AND su.name=#name#
+	@}

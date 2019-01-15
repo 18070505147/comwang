@@ -1,0 +1,11 @@
+com\chejet\cloud\config\FileUploadConfig.class
+com\chejet\cloud\config\SqlManagerConfig.class
+com\chejet\cloud\scheduler\PushJobHandler.class
+com\chejet\cloud\config\DruidConfiguration.class
+com\chejet\cloud\config\DTSJobConfig.class
+com\chejet\cloud\config\IDWorkerConfiguration.class
+com\chejet\cloud\config\JWTHelper.class
+com\chejet\cloud\config\CorsConfig.class
+com\chejet\cloud\config\DefaultFastjsonConfig$1.class
+com\chejet\cloud\config\ExecutePoolConfiguration.class
+com\chejet\cloud\config\DefaultFastjsonConfig.class

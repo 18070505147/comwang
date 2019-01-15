@@ -1,0 +1,83 @@
+package com.chejet.cloud.vo;
+
+import java.util.List;
+
+/**
+ * @Description
+ * @Date 2018/12/27 10:10
+ * @Version 1.0
+ */
+public class EmployeeAppRole {
+    /**
+     * 应用ID
+     */
+    private Long appId;
+    /**
+     * 应用名称
+     */
+    private String appName;
+    /**
+     * 用户ID
+     */
+    private Long userId;
+    /**
+     * 员工ID
+     */
+    private Long employeeId;
+    /**
+     * 应用下角色列表
+     */
+    private List<RoleItem> roleItemList;
+    /**
+     * 员工已选角色列表
+     */
+    private List<RoleItem> checkedRoleItem;
+
+    public Long getAppId() {
+        return appId;
+    }
+
+    public void setAppId(Long appId) {
+        this.appId = appId;
+    }
+
+    public String getAppName() {
+        return appName;
+    }
+
+    public void setAppName(String appName) {
+        this.appName = appName;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public Long getEmployeeId() {
+        return employeeId;
+    }
+
+    public void setEmployeeId(Long employeeId) {
+        this.employeeId = employeeId;
+    }
+
+    public List<RoleItem> getRoleItemList() {
+        return roleItemList;
+    }
+
+    public void setRoleItemList(List<RoleItem> roleItemList) {
+        this.roleItemList = roleItemList;
+    }
+
+    public List<RoleItem> getCheckedRoleItem() {
+        return checkedRoleItem;
+    }
+
+    public void setCheckedRoleItem(List<RoleItem> checkedRoleItem) {
+        this.checkedRoleItem = checkedRoleItem;
+    }
+}

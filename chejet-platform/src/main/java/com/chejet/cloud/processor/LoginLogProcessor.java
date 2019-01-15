@@ -1,0 +1,95 @@
+package com.chejet.cloud.processor;
+
+import javax.servlet.http.HttpServletRequest;
+
+import com.alibaba.fastjson.JSON;
+import com.chejet.cloud.common.ErrorCodeEnum;
+import com.chejet.cloud.dto.LoginUser;
+import com.chejet.cloud.po.User;
+import com.chejet.cloud.response.ApiResp;
+import org.beetl.sql.core.SQLManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import com.alibaba.fastjson.JSONObject;
+import com.chejet.cloud.dao.UserLoginLogMapper;
+import com.chejet.cloud.po.UserLoginLog;
+import com.chejet.cloud.util.StringUtils;
+import com.chejet.cloud.util.WebUtil;
+
+import java.util.Objects;
+
+/**
+ * 登录日志处理器
+ * 
+ * @author ansen.zhu@carlt.com.cn
+ * @date 2018/12/07
+ */
+@Component("loginLogProcessor")
+public class LoginLogProcessor implements ILogProcessor {
+
+	private static final Logger logger = LoggerFactory.getLogger(OperationLogProcessor.class);
+
+	@Autowired
+	private SQLManager sqlManager;
+
+	@Override
+	public void process(LogParam logParam) {
+		HttpServletRequest request = logParam.getRequest();
+		UserLoginLog loginLog = new UserLoginLog();
+		// 参数与结果
+		String param = logParam.getJoinPoint().getArgs()[0].toString();
+		JSONObject payload = JSON.parseObject(param);
+		ApiResp result;
+		if (logParam.isException){
+			result = JSON.parseObject(logParam.getMessage(), ApiResp.class);
+		}else {
+			result = (ApiResp) logParam.getObject();
+		}
+
+		if (payload != null) {
+			String telephone = payload.getString("telephone");
+			User user = sqlManager.lambdaQuery(User.class).andEq(User::getTelephone, telephone).single();
+			if (user != null) {
+				Long userId = user.getId();
+				loginLog.setUserId(userId);
+				// loginLog.setAppId(appId);
+				// loginLog.setTenantId(tenantId);
+			}
+			loginLog.setDeviceInformation(payload.getString("deviceInfo"));
+			loginLog.setLoginDevice(payload.getInteger("loginDevice"));
+			loginLog.setLoginMode(payload.getInteger("mode"));
+			loginLog.setIp(payload.getString("ip"));
+		}
+
+		// 登录状态 字典值：0-登录成功，1-密码错误
+		int loginStatus;
+		if (result != null){
+			if (Objects.equals(200, result.getCode())) {
+				loginStatus = 0;
+				String jsonString = JSONObject.toJSONString(result.getData());
+				LoginUser loginUser = JSON.parseObject(jsonString, LoginUser.class);
+				loginLog.setUserToken(loginUser.getUserToken());
+			}else if (
+					Objects.equals(ErrorCodeEnum.USER_MOBILE_VERIFICATION_ERROR.getCode(), result.getCode()) ||
+					Objects.equals(ErrorCodeEnum.USER_USERNAME_PASSWORD_INVALID.getCode(), result.getCode())
+//					|| Objects.equals(ErrorCodeEnum.LOCK_YOUR_ACCOUNT_PLEASE_TRY_IT_IN_30_MINUTES.getCode(), result.getCode())
+ 			) {
+				loginStatus = 1;
+			}else if (Objects.equals(ErrorCodeEnum.LOCK_YOUR_ACCOUNT_PLEASE_TRY_IT_IN_30_MINUTES.getCode(), result.getCode())){
+				loginStatus = 3;
+			}else {
+				loginStatus = 2;
+			}
+			loginLog.setLoginStatus(loginStatus);
+			loginLog.setRemark(result.getMessage());
+			loginLog.setLoginTime(logParam.getBeginTime());
+		}
+
+		logger.info("执行方法信息:" + JSONObject.toJSON(loginLog));
+		sqlManager.insert(loginLog);
+	}
+
+}

@@ -1,0 +1,123 @@
+package com.chejet.cloud.po;
+
+import java.util.Date;
+
+import org.beetl.sql.core.annotatoin.AssignID;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+/**
+ * 
+ * @author ansen.zhu@carlt.com.cn
+ * @date 2018/12/14
+ */
+public class RelManagerDeploymodule {
+	@JsonIgnore
+	@AssignID("simple")
+	Long id;
+	String deploymoduleId;
+	Long managerId;
+	Long appId;
+	@JsonIgnore
+	Date ctime;
+	@JsonIgnore
+	Date mtime;
+	private static final long serialVersionUID = 1L;
+
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public String getDeploymoduleId() {
+		return deploymoduleId;
+	}
+
+	public void setDeploymoduleId(String deploymoduleId) {
+		this.deploymoduleId = deploymoduleId;
+	}
+
+	public Long getManagerId() {
+		return managerId;
+	}
+
+	public void setManagerId(Long managerId) {
+		this.managerId = managerId;
+	}
+
+	public Long getAppId() {
+		return appId;
+	}
+
+	public void setAppId(Long appId) {
+		this.appId = appId;
+	}
+
+	public Date getCtime() {
+		return ctime;
+	}
+
+	public void setCtime(Date ctime) {
+		this.ctime = ctime;
+	}
+
+	public Date getMtime() {
+		return mtime;
+	}
+
+	public void setMtime(Date mtime) {
+		this.mtime = mtime;
+	}
+
+	@Override
+	public boolean equals(Object that) {
+		if (this == that) {
+			return true;
+		}
+		if (that == null) {
+			return false;
+		}
+		if (getClass() != that.getClass()) {
+			return false;
+		}
+		RelManagerDeploymodule other = (RelManagerDeploymodule) that;
+		return (this.getId() == null ? other.getId() == null : this.getId().equals(other.getId()))
+						
+				&& (this.getManagerId() == null ? other.getManagerId() == null
+						: this.getManagerId().equals(other.getManagerId()))
+				&& (this.getCtime() == null ? other.getCtime() == null : this.getCtime().equals(other.getCtime()))
+				&& (this.getMtime() == null ? other.getMtime() == null : this.getMtime().equals(other.getMtime()));
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((getId() == null) ? 0 : getId().hashCode());		
+	
+		result = prime * result + ((getManagerId() == null) ? 0 : getManagerId().hashCode());
+		result = prime * result + ((getCtime() == null) ? 0 : getCtime().hashCode());
+		result = prime * result + ((getMtime() == null) ? 0 : getMtime().hashCode());
+		return result;
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		sb.append(getClass().getSimpleName());
+		sb.append(" [");
+		sb.append("Hash = ").append(hashCode());
+		sb.append(", id=").append(id);
+	
+		sb.append(", managerId=").append(managerId);
+		sb.append(", ctime=").append(ctime);
+		sb.append(", mtime=").append(mtime);
+		sb.append(", serialVersionUID=").append(serialVersionUID);
+		sb.append("]");
+		return sb.toString();
+	}
+
+}

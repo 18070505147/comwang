@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="chejet-api-gateway" />
+        <module name="chejet-config" />
+        <module name="chejet-core" />
+        <module name="chejet-dal" />
+        <module name="chejet-platform" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel target="1.8">
+      <module name="chejet-api-gateway" target="1.8" />
+      <module name="chejet-cloud" target="1.8" />
+      <module name="chejet-config" target="1.8" />
+      <module name="chejet-core" target="1.8" />
+      <module name="chejet-dal" target="1.8" />
+      <module name="chejet-platform" target="1.8" />
+    </bytecodeTargetLevel>
+  </component>
+</project>

@@ -1,0 +1,145 @@
+package com.chejet.cloud.service.impl;
+
+import com.chejet.cloud.common.ErrorCodeEnum;
+import com.chejet.cloud.common.RoleTypeEnum;
+import com.chejet.cloud.dao.ReplaceTenantAdminMapper;
+import com.chejet.cloud.exception.BaseException;
+import com.chejet.cloud.po.GroupAppRole;
+import com.chejet.cloud.po.RelUserGroupRole;
+import com.chejet.cloud.po.Tenant;
+import com.chejet.cloud.po.User;
+import com.chejet.cloud.service.ReplaceTenantAdminService;
+import com.chejet.cloud.service.VerificationCodeService;
+import com.chejet.cloud.util.PasswordProvider;
+import com.chejet.cloud.util.RandomPasswordUtil;
+import com.chejet.cloud.util.StringUtils;
+import com.chejet.cloud.vo.RsultMsgVO;
+import com.chejet.cloud.util.LongIdGen;
+import org.beetl.sql.core.SQLManager;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * @Author: Bean.Wang
+ * @Date: 2018/12/12 9:35
+ */
+@Service
+public class ReplaceTenantAdminServiceImpl implements ReplaceTenantAdminService {
+    @Autowired
+    private SQLManager sqlManager;
+    @Autowired
+    private ReplaceTenantAdminMapper replaceTenantAdminMapper;
+    @Autowired
+    private VerificationCodeService verificationCodeService;
+
+    @Override
+    @Transactional
+    public Boolean replaceTenantAdmin(Long tenantId, String oldMobileNo, String mobileNo, String roleId, String oldUserId) {
+//  获取租户的租户管理员角色
+        GroupAppRole role = sqlManager.lambdaQuery(GroupAppRole.class)
+                .andEq(GroupAppRole::getTenantId, tenantId)
+                .andEq(GroupAppRole::getRoleType, RoleTypeEnum.TENANT_ADMIN.getValue()).single();
+        if (role == null) {
+            throw new BaseException(ErrorCodeEnum.ROLES_NOT_FOUND);
+        }
+        User user = sqlManager.lambdaQuery(User.class).andEq(User::getTelephone, mobileNo).single();
+        if (user == null) {
+            long userId = LongIdGen.get().nextId();
+            user = new User();
+            String password = RandomPasswordUtil.genStringRandom(6);
+            user.setId(userId);
+            user.setTelephone(mobileNo);
+            user.setPassword(PasswordProvider.encrypt(password));
+            user.setNickname(mobileNo);
+            user.setModifiedFlag(true);
+            user.setUsername("0");
+            user.setAccountStatus(1);
+            user.setLoginCount(0);
+            sqlManager.insertTemplate(user);
+            // 发送短息
+            String[] body = {oldMobileNo, mobileNo, password, " http://chejet.com"};
+            verificationCodeService.pushSmsMessage(mobileNo, body);
+        } else if (user.getAccountStatus() == 0) {
+// 将账户状态修改为正常
+            user.setAccountStatus(1);
+            sqlManager.updateTemplateById(user);
+        }
+        RelUserGroupRole single = sqlManager.lambdaQuery(RelUserGroupRole.class)
+                .andEq(RelUserGroupRole::getTenantId, tenantId)
+                .andEq(RelUserGroupRole::getUserId, user.getId())
+                .andEq(RelUserGroupRole::getRoleId, role.getId())
+                .single();
+// 判断管理员是不是和将要替换的是同一个账户
+        if (single != null) {
+            if (Objects.equals(single.getRoleId(), role.getId())) {
+                throw new BaseException(ErrorCodeEnum.REPLACE_ADMIN_FIELD);
+            }
+        }
+        boolean empty = !StringUtils.isEmpty(roleId);
+        if (empty) {
+            List<RelUserGroupRole> userGroupRoles = sqlManager.lambdaQuery(RelUserGroupRole.class)
+                    .andEq(RelUserGroupRole::getTenantId, tenantId)
+                    .andEq(RelUserGroupRole::getRoleId, Long.parseLong(roleId))
+                    .andEq(RelUserGroupRole::getUserId, oldMobileNo).select();
+            userGroupRoles.forEach(u -> {
+                sqlManager.deleteById(RelUserGroupRole.class, u.getId());
+            });
+        }
+        // 删除原用户租户管理角色
+        RelUserGroupRole tenantRoleRel = sqlManager.lambdaQuery(RelUserGroupRole.class)
+                .andEq(RelUserGroupRole::getTenantId, tenantId)
+                .andEq(RelUserGroupRole::getRoleId, role.getId())
+                .andEq(RelUserGroupRole::getUserId, oldUserId).single();
+        if (tenantRoleRel != null) {
+            sqlManager.deleteById(RelUserGroupRole.class, tenantRoleRel.getId());
+        }
+
+// 添加新用户为租户管理员角色
+        RelUserGroupRole relUserGroupRole = new RelUserGroupRole();
+        relUserGroupRole.setId(LongIdGen.get().nextId());
+        relUserGroupRole.setTenantId(tenantId);
+        relUserGroupRole.setRoleId(role.getId());
+        relUserGroupRole.setUserId(user.getId());
+        Tenant tenant = sqlManager.lambdaQuery(Tenant.class).andEq(Tenant::getId, tenantId).single();
+        tenant.setUserId(user.getId());
+        sqlManager.updateTemplateById(tenant);
+        int i = sqlManager.insertTemplate(relUserGroupRole);
+
+        if (i != 1) {
+            throw new BaseException(ErrorCodeEnum.ADD_ROLES_FIELD);
+        }
+        return true;
+    }
+
+    @Override
+    public RsultMsgVO checkUserRole(Long tenantId, String mobileNo) {
+        RsultMsgVO rsultMsgVO = new RsultMsgVO();
+        User user = sqlManager.lambdaQuery(User.class).andEq(User::getTelephone, mobileNo).single();
+        if (user == null) {
+            rsultMsgVO.setType(ErrorCodeEnum.ALLOW_REPLACEMENT.getCode());
+            rsultMsgVO.setMsg(ErrorCodeEnum.ALLOW_REPLACEMENT.getMessage());
+            return rsultMsgVO;
+        }
+        //获取用户角色列表
+        GroupAppRole role = replaceTenantAdminMapper.findUserRoles(tenantId, user.getId());
+        if (role == null) {
+            rsultMsgVO.setType(ErrorCodeEnum.ALLOW_REPLACEMENT.getCode());
+            rsultMsgVO.setMsg(ErrorCodeEnum.ALLOW_REPLACEMENT.getMessage());
+            return rsultMsgVO;
+        }
+        if (Objects.equals(role.getRoleType(), RoleTypeEnum.TENANT_ADMIN.getValue())) {
+            rsultMsgVO.setType(ErrorCodeEnum.REPLACE_ADMIN_FIELD.getCode());
+            rsultMsgVO.setMsg(ErrorCodeEnum.REPLACE_ADMIN_FIELD.getMessage());
+            rsultMsgVO.setRoleId(role.getId() + "");
+
+        } else {
+            rsultMsgVO.setType(ErrorCodeEnum.ROLE_CONFLICT.getCode());
+            rsultMsgVO.setMsg(ErrorCodeEnum.ROLE_CONFLICT.getMessage());
+        }
+        return rsultMsgVO;
+    }
+}

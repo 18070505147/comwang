@@ -1,0 +1,152 @@
+package com.chejet.cloud.aop;
+
+import java.lang.reflect.Method;
+import java.util.Date;
+import java.util.Map;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Pointcut;
+import org.beetl.sql.ext.SnowflakeIDWorker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.NamedThreadLocal;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import com.alibaba.fastjson.JSONObject;
+import com.chejet.cloud.annotation.Slog;
+import com.chejet.cloud.common.LogTypeEnum;
+import com.chejet.cloud.dao.UserOperationLogMapper;
+import com.chejet.cloud.po.User;
+import com.chejet.cloud.po.UserOperationLog;
+import com.chejet.cloud.processor.AccountLogProcessor;
+import com.chejet.cloud.processor.ILogProcessor;
+import com.chejet.cloud.processor.LogParam;
+import com.chejet.cloud.processor.LoginLogProcessor;
+import com.chejet.cloud.processor.OperationLogProcessor;
+import com.chejet.cloud.util.SpringUtil;
+import com.chejet.cloud.util.StringUtils;
+import com.chejet.cloud.util.WebUtil;
+
+/**
+ * SLog切面实现
+ * 
+ * @author ansen.zhu@carlt.com.cn
+ * @date 2018/12/05
+ */
+@Aspect
+@Component
+public class SlogAspect {
+
+	@Autowired(required = false)
+	private HttpServletRequest request;
+
+	@Autowired(required = false)
+	private HttpServletResponse response;
+
+//	@Autowired
+//	private SnowflakeIDWorker snowflakeIDWorker;
+
+//	@Pointcut("execution(* com.chejet.cloud.controller..*(..))  ")
+	@Pointcut("@annotation(com.chejet.cloud.annotation.Slog)")
+	public void aspect() {
+	}
+
+	@Around(value = "aspect()")
+	public Object validationPoint(ProceedingJoinPoint pjp) throws Throwable {
+		Method method = currentMethod(pjp, pjp.getSignature().getName());
+		return doHandlerAspect(pjp, method);
+	}
+
+	
+
+	/**
+	 * 异步线程池处理不同类型日志
+	 * 
+	 * @param pjp
+	 * @param method
+	 * @return
+	 * @throws Throwable
+	 */
+	@Async
+	private Object doHandlerAspect(ProceedingJoinPoint pjp, Method method) throws Throwable {
+
+		Slog log = method.getAnnotation(Slog.class);
+
+		// 异常日志信息
+		String message = null;
+		StackTraceElement[] stackTrace = null;
+		// 是否执行异常
+		boolean isException = false;
+		// 开始时间戳
+		Date beginTime = new Date();
+		Object object = null;
+		try {
+			object = pjp.proceed(pjp.getArgs());
+			return object;
+		} catch (Throwable throwable) {
+			isException = true;
+			message = throwable.toString();
+			stackTrace = throwable.getStackTrace();
+			throw throwable;
+		} finally {
+
+			// 日志处理
+			logHandle(pjp, method, log, beginTime, isException, message, object);
+		}
+	}
+	
+	protected Method currentMethod(ProceedingJoinPoint joinPoint, String methodName) {
+		Method[] methods = joinPoint.getTarget().getClass().getMethods();
+		Method resultMethod = null;
+		for (Method method : methods) {
+			if (method.getName().equals(methodName)) {
+				resultMethod = method;
+				break;
+			}
+		}
+		return resultMethod;
+	}
+
+	private void logHandle(ProceedingJoinPoint joinPoint, Method method, Slog log, Date beginTime, boolean isException,
+						   String message, Object object) {
+		
+		if(log==null){
+			return;
+		}
+		
+		LogParam logParam = new LogParam();
+		logParam.setJoinPoint(joinPoint);
+		logParam.setMethod(method);
+		logParam.setLog(log);
+		logParam.setBeginTime(beginTime);
+		logParam.setException(isException);
+		logParam.setMessage(message);
+		logParam.setObject(object);
+		logParam.setRequest(request);
+		logParam.setResponse(response);
+
+		ILogProcessor logProcessor = null;
+		if (log.type().equals(LogTypeEnum.OPERATION.getName())) {
+			logProcessor = SpringUtil.getBean(OperationLogProcessor.class);
+		}
+
+		if (log.type().equals(LogTypeEnum.ACCOUNT.getName())) {
+			logProcessor = SpringUtil.getBean(AccountLogProcessor.class);
+		}
+
+		if (log.type().equals(LogTypeEnum.LOGIN.getName())) {
+			logProcessor = SpringUtil.getBean(LoginLogProcessor.class);
+		}
+
+		logProcessor.process(logParam);
+	}
+
+}

@@ -1,0 +1,201 @@
+findUserFoRole
+===
+SELECT U.id AS userId,
+e.id AS employee_id,
+u.name AS userName,
+u.telephone,
+c.id AS companyId,
+C.NAME AS companyName,
+d.id AS departmentId,
+D.NAME AS departmentName
+FROM sys_employee E
+LEFT JOIN sys_company C
+ON E.company_id=C.id
+LEFT JOIN sys_department D
+ON D.ID=E.department_id
+LEFT JOIN sys_user U
+ON U.id=E.user_id
+WHERE E.company_id=#companyId#
+AND E.tenant_id=#tenantId#
+AND E.status=1
+AND E.user_id NOT IN (
+SELECT user_id FROM rel_user_group_role
+WHERE app_id=#appId#
+AND tenant_id=#tenantId#
+AND company_id=#companyId#
+AND role_id=#roleId#
+)
+@trim(){
+   @if(!isEmpty(condition)){
+       AND (
+       u.telephone like #condition#
+       or  u.NAME like #condition#) 
+    @} 
+@} 
+limit #pageN0#,#pageSize#
+
+findUserFoRoleCount
+===
+SELECT COUNT(*)
+FROM sys_employee E
+LEFT JOIN sys_company C
+ON E.company_id=C.id
+LEFT JOIN sys_department D
+ON D.ID=E.department_id
+LEFT JOIN sys_user U
+ON U.id=E.user_id
+WHERE E.company_id=#companyId#
+AND E.tenant_id=#tenantId#
+AND E.status=1
+AND E.user_id NOT IN (
+SELECT user_id FROM rel_user_group_role
+WHERE app_id=#appId#
+AND tenant_id=#tenantId#
+AND company_id=#companyId#
+AND role_id=#roleId#
+)
+@trim(){
+   @if(!isEmpty(condition)){
+       AND (
+       u.telephone like #condition#
+       or  u.NAME like #condition#) 
+    @} 
+@} 
+
+findRoleUser
+===
+SELECT u.id AS userId,
+u.name AS userName,
+u.telephone,
+c.id AS companyId,
+C.NAME AS companyName,
+d.id AS departmentId,
+D.NAME AS departmentName
+FROM sys_employee E
+INNER JOIN (SELECT * FROM `rel_user_group_role` 
+WHERE role_id=#roleId#
+AND tenant_id=#tenantId#
+) A
+ON E.user_id=A.user_id
+LEFT JOIN sys_company C
+ON E.company_id=C.id
+LEFT JOIN sys_department D
+ON D.ID=E.department_id
+LEFT JOIN sys_user U
+ON U.id=E.user_id
+
+getPointPermissionList
+===
+SELECT 
+PP.permission_point_id,
+CASE 
+	WHEN SUM( PP.close_flag )>=1 THEN
+		1
+	ELSE
+		0
+END AS close_flag,
+CASE 
+	WHEN SUM( PP.close_flag )>=1 THEN 0
+	WHEN SUM( PP.enable_flag )>=1  AND  SUM( PP.close_flag ) =0 THEN 1
+	ELSE
+		0
+END AS enable_flag
+FROM  rel_role_point_permission PP
+INNER JOIN sys_group_app_role AR ON PP.role_id=AR.id
+WHERE role_id IN (#roleIds#)
+GROUP BY 
+PP.permission_point_id
+
+getSensitiveDataList
+===
+SELECT 
+DP.sentitive_id,
+CASE 
+	WHEN SUM( DP.modified_flag )>=1 THEN
+		1
+	ELSE
+		0
+END AS modified_flag,
+CASE 
+	WHEN SUM( DP.view_flag )>=1 THEN 1
+	ELSE
+		0
+END AS viewFlag
+FROM  rel_role_data_permission DP
+INNER JOIN sys_group_app_role AR ON DP.role_id=AR.id
+WHERE role_id IN (#roleIds#)
+GROUP BY 
+DP.sentitive_id
+
+
+findAppPersonalPermissionList
+===
+SELECT ta.app_id, ta.tenant_id, ta.version_id, vd.deploymodule_id, df.id funId, df.name funName, df.code funCode, df.function_url, fp.id pointId, fp.name pointName, fp.code pointCode, fp.is_menu isMenu, fp.url pointUrl FROM rel_tenant_app ta 
+LEFT JOIN rel_version_deploymodule vd ON vd.version_id = ta.version_id
+LEFT JOIN sys_deploymodule_function df ON df.deploymodule_id = vd.deploymodule_id
+LEFT JOIN sys_function_permission_point fp ON fp.function_id = df.id
+WHERE 
+ta.app_id = #appId# 
+AND ta.tenant_id = #tenantId#
+AND ta.app_status IN(0,2)
+AND ta.expire_time > NOW()
+AND df.status = 1
+AND fp.enable_flag = 1
+@if(!isEmpty(userId)){
+    AND fp.id IN (
+            SELECT p.permission_point_id FROM rel_role_point_permission p
+            WHERE p.role_id IN (
+                    SELECT a.role_id FROM rel_user_group_role a
+                    LEFT JOIN sys_group_app_role b ON a.role_id = b.id
+                    WHERE a.user_id = #userId#
+                    AND a.app_id = #appId#
+                    AND a.tenant_id = #tenantId#
+                    @if(!isEmpty(companyId)){
+                        AND a.company_id = #companyId#
+                    }
+                    AND b.enable_flag = 1
+            )
+            AND p.close_flag = 0
+            AND p.enable_flag = 1
+            AND p.permission_point_id NOT IN (
+                    SELECT pi.permission_point_id FROM rel_role_point_permission pi
+                    WHERE pi.role_id IN (
+                            SELECT a.role_id FROM rel_user_group_role a
+                            LEFT JOIN sys_group_app_role b ON a.role_id = b.id
+                            WHERE a.user_id = #userId#
+                            AND a.app_id = #appId#
+                            AND a.tenant_id = #tenantId#
+                            @if(!isEmpty(companyId)){
+                                AND a.company_id = #companyId#
+                            }
+                            AND b.enable_flag = 1
+                    )
+                    AND pi.close_flag = 1
+                    AND pi.enable_flag = 0
+            )
+            GROUP BY p.permission_point_id
+    )
+}
+
+getTenantCompany
+===
+SELECT C.id,c.`name` FROM sys_company c WHERE c.tenant_id=#tenantId#
+
+getCompany
+===
+SELECT 
+C.id,c.`name`
+FROM
+rel_user_group_role UR
+LEFT JOIN sys_group_app_role R ON UR.role_id=R.id
+LEFT JOIN sys_company C ON C.id=R.company_id
+WHERE UR.user_id=#userId#
+AND UR.tenant_id=#tenantId#
+AND R.role_type=4
+
+
+
+
+
+
+

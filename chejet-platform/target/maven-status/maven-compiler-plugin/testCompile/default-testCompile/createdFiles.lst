@@ -1,0 +1,10 @@
+com\chejet\cloud\dao\UserMapper.class
+com\chejet\cloud\model\SysUser.class
+com\chejet\cloud\service\impl\HomePageServiceImplTest.class
+com\chejet\cloud\service\impl\UserServiceImplTest.class
+com\chejet\cloud\service\impl\BaseServiceImplTest.class
+com\chejet\cloud\controller\UserControllerTest.class
+com\chejet\cloud\service\impl\CompanyServiceImplTest.class
+com\chejet\cloud\CodeTest.class
+com\chejet\cloud\SpringBootApplicationTest.class
+com\chejet\cloud\service\IUserServiceTest.class

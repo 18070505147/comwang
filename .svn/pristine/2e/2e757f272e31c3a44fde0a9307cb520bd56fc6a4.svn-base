@@ -1,0 +1,75 @@
+package com.chejet.cloud.service;
+
+import java.util.List;
+
+import com.chejet.cloud.vo.*;
+import org.beetl.sql.core.engine.PageQuery;
+import com.chejet.cloud.common.CurrentUserInfo;
+import com.chejet.cloud.po.App;
+import com.chejet.cloud.po.Company;
+import com.chejet.cloud.po.CompanyManager;
+import com.chejet.cloud.po.RelCompanyApp;
+import com.chejet.cloud.po.RelManagerDeploymodule;
+
+/**
+ * 公司管理biz接口
+ *
+ * @author ansen.zhu@carlt.com.cn
+ * @date 2018/12/13
+ */
+public interface CompanyService {
+
+	 List<CompanyVO> treeCompany(Company company, CurrentUserInfo currentUser) throws Exception;
+
+	 PageQuery<Company> pageCompany(Company company, CurrentUserInfo currentUser) throws Exception;
+
+	 List<Company> queryCompany(Company company) throws Exception;
+
+	 List<ItemVO> listCompany(Company company, CurrentUserInfo currentUser) throws Exception;
+
+	 boolean saveCompany(Company company, CurrentUserInfo currentUser) throws Exception;
+
+	 boolean deleteCompany(Company company, CurrentUserInfo currentUser) throws Exception;
+
+	 boolean updateCompany(Company company,CurrentUserInfo currentUser) throws Exception;
+
+	 public List<ItemVO> listCompany(CurrentUserInfo currentUser);
+
+	 List<CompanyManagerVO> listCompanyManager(Long companyId, CurrentUserInfo currentUser) throws Exception;
+
+	 boolean saveCompanyManager(IdVO idVO);
+
+	 boolean deleteCompanyManager(Long companyId, Long appId, CurrentUserInfo currentUser)throws Exception;
+
+	 public List<AppModule> getManagerDeploymodule(Long managerId, Long appId, CurrentUserInfo currentUser)throws Exception;
+
+	 public boolean editManagerDeploymodule(Long managerId, Long appId, List<RelManagerDeploymodule> moduleList, CurrentUserInfo currentUser)throws Exception;
+
+	 public List<App> getCompanyRoleList(Long companyId, CurrentUserInfo currentUser)throws Exception;
+
+	 List<AppDeployModuleVO> listCompanyApp(IdVO idVO) throws Exception;
+
+	 boolean deleteCompanyAppModule(Long companyId, Long appId, Long deployModuleId);
+
+	 List<ItemVO> dictCompanyApp(Long companyId, CurrentUserInfo currentUser) throws Exception;
+
+	 public boolean saveCompanyApp(List<RelCompanyApp> rcaList, CurrentUserInfo currentUser) throws Exception;
+		/**
+		 * 查询应用列表以及应用下的配置包
+		 * @param currentUserInfo
+		 * @return
+		 */
+	 List<AppDeployModuleVO> appListAndDeployModule(Long companyId, CurrentUserInfo currentUserInfo)throws Exception;
+
+	/**
+	 * 查询企业管理员下的企业列表
+	 * @param currentUserInfo 当前登录用户
+	 * @param companyName 公司名称
+	 * @param contact 联系人
+	 * @param telephone 联系方式
+	 * @param pageNo 页码
+	 * @param pageSize 页面大小
+	 * @return
+	 */
+	PageQuery queryCompanyByPageForManager(CurrentUserInfo currentUserInfo, String companyName, String contact, String telephone, Integer pageNo, Integer pageSize);
+}

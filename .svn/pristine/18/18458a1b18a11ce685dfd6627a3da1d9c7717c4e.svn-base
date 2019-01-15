@@ -1,0 +1,206 @@
+package com.chejet.cloud.common;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * @author Neo.fang
+ * @creatTime 2018/11/6 0006
+ * <p>
+ * 异常码（基础码除外）采用8位数字设计
+ * 10110001
+ * 10-1-1-0001
+ * 前两位是服务标号-平台内微服务编号申请
+ * 第三位是系统层级标号-应用层、业务层、数据层
+ * 第四号是提示级别标号-严重、警告、提示（提示级以上，前端响应相应操作）、日志
+ * 后四位是业务码范围，各功能模块分级设计
+ */
+public enum ErrorCodeEnum {
+    /**
+     * 应用服务器基本异常码
+     */
+    SUCCESS(200, "操作成功"),
+    FAIL(999, "操作失败"),
+    PARSE_ERROR(990, "解析错误"),
+    SERVER_BUSY(991, "服务器繁忙，请稍后再试!"),
+    SERVER_ERROR(992, "服务器异常"),
+    BUSINESS_ERROR(993, "业务异常"),
+    PARAM_ERROR(994, "参数错误"),
+    UNKNOWN_ERROR(-1, "未知错误"),
+
+
+    /**
+     * 远程服务异常码（1000-1100）
+     */
+    REMOTE_SERVICE_UNUSABLE(1000, "远程服务不可用"),
+    REMOTE_DEAL_EXCEPTION(1001, "远程服务调用处理异常"),
+    REDIRECTED_EXCEPTION(1002, "重定向异常"),
+    MAIL_SENDING_EXCEPTION(1003, "邮件发送异常   "),
+    MSG_SENDING_EXCEPTION(1004, "短信发送异常"),
+    SEND_MSG_OVER(110,"验证码超出同模板同号码天发送上限"),
+    MSG_NOT_FOUND(111,"msgId获取失败"),
+
+    // 文件资源系统异常码
+    MULTIPART_TYPE_ERROR(2001, "上传内容不是有效的文件类型"),
+    FILE_IS_EMPTY(2002, "文件不能为空"),
+    RESOURCE_NOT_EXIST(2003, "资源不存在"),
+    PICTURE_FORMAT_IS_NOT_SUPPORTED(2004, "图片格式不支持"),
+    STORAGE_PATH_ERROR(2005, "储存路径错误"),
+
+    /**
+     * 用户权限模块异常码
+     */
+
+    USER_NOT_LOGIN(9001, "用户没有登录"),
+    UESR_FORBIDDEN(9002, "用户无权限"),
+    USER_MOBILE_VERIFICATION_ERROR(9003, "短信验证码错误或过期，请重新输入"),
+    USER_MOBILE_VERIFICATION_OVERTIME(9004, "手机验证码过期"),
+    USER_CAPTCHA_ERROR(9005, "图形验证码错误"),
+    USER_CAPTCHA_OVERTIME(9006, "图形验证码过期"),
+    USER_TOKEN_ERROR(9007, "未登录或已超时"),
+    UESR_PERMISSION_ERROR(9008, "没有访问权限"),
+    USER_INFO_ADD_ERROR(9009, "新增模块信息失败"),
+    USER_INFO_DELETE_ERROR(9010, "删除模块信息失败"),
+    USER_INFO_UPDATE_ERROR(9012, "修改模块信息失败"),
+    USER_INFO_QUERY_ERROR(9013, "查询分类详情失败"),
+    USER_INVALID(9014, "用户不存在"),
+    USER_ROLE_INVALID(9015, "在本系统中角色不存在"),
+    USER_USERNAME_PASSWORD_INVALID(9016, "用户名或密码错误"),
+    INVALID_RE_PASSWORD(9017, "两次输入密码不一致"),
+    USER_HAVE_BEEN_REGISTERED(9018, "用户已被注册"),
+    PASSWORD_ENCRYPTION_ERROR(9019, "密码加密错误"),
+    ERROR_IN_LOGIN_MODE(9020, "登录方式错误"),
+    OLD_PASSWORD_INVALID(9021,"旧密码不正确"),
+    ACCOUNT_DISABLED_OR_CANCELLED(9022, "账户被禁用或已注销"),
+    LOCK_YOUR_ACCOUNT_PLEASE_TRY_IT_IN_30_MINUTES(9023, "账号锁定，请30分钟后尝试"),
+    TENANT_INVALID(9024, "租户不存在"),
+    REQUEST_TOKEN_EMPTY(9025,"请求Token为空"),
+    /**
+      * 部门异常码
+      */
+    DEPARTMENT_EXISTS(9101,"此部门已存在"),
+    DEPARTMENT_NOEXISTS(9102,"此部门不存在"),
+    DEPARTMENT_PARENT_NOEXISTS(9104,"上级部门不存在"),
+    DEPARTMENT_UPDATE_EXCEPTION(9105,"部门更新失败"),
+    DEPARTMENT_SAVE_EXCEPTION(9106,"部门保存失败"),
+    DEPARTMENT_CHILD_EXCEPTION(9107,"请先删除下级部门，再变更此部门上级部门"),
+    DEPARTMENT_TREE_EXCEPTION(9108,"获取部门树失败"),
+    DEPARTMENT_DICT_EXCEPTION(9109,"获取部门字典失败"),
+    DEPARTMENT_IS_NOT_NULL(9110,"部门不能为空"),
+    DEPARTMENT_DELETE_HAS_CHILD(9111,"该部门拥有子部门不能删除"),
+    DEPARTMENT_DELETE_HAS_EMPLOYEE(9112,"该部门仍有在职员工不能删除"),
+    /**
+     * 员工异常码
+     */
+    EMPLOYEE_PAGE_GET_ERROR(9201,"分页获取企业员工失败"),
+    EMPLOYEE_EXISTS(9203,"此员工已存在"),
+    EMPLOYEE_NONEXISTS(9204,"此员工不存在"),
+    EMPLOYEE_ID_BLANK(9205,"此员工ID不能为空"),
+    EMPLOYEE_APP_ROLE_NULL(9206,"员工应用角色列表为空"),
+    EMPLOYEE_APP_SCOPE_NULL(9207,"员工应用管理范围为空"),
+    EMPLOYEE_IS_NOT_NULL(9208,"请至少选择一个员工"),
+    EMPLOYEE_EXPORT_ERROR(9209,"员工导出失败"),
+
+    /**
+     * 公司异常码
+     */
+    COMPANY_LIST_EXCEPTION(9300,"公司列表为空"),
+    COMPANY_EXISTS(9301,"此公司已存在"),
+    COMPANY_NOEXISTS(9302,"此公司不存在"),
+    COMPANY_PARENT_NOEXISTS(9304,"上级公司不存在"),
+    COMPANY_UPDATE_EXCEPTION(9305,"公司更新失败"),
+    COMPANY_SAVE_EXCEPTION(9306,"公司保存失败"),
+    COMPANY_CHILD_EXCEPTION(9307,"请先删除下级公司，再变更此公司上级公司"), 
+    COMPANY_TREE_EXCEPTION(9308,"获取公司树失败"),
+    COMPANY_DICT_EXCEPTION(9309,"获取公司字典失败"),
+    
+    /**
+     * 公司管理员
+     */
+    MANAGER_COMPANY_NOEXISTS(9401,"公司管理员无任职公司"),
+    MANAGER_COMPANY_LIST_ERROR(9402,"获取管理员公司列表"),
+    MANAGER_LIST_ERROR(9403,"获取管理员列表不存在"),
+    MANAGER_UPDATE_EXCEPTION(9404,"管理员更新失败"),
+    MANAGER_SAVE_EXCEPTION(9405,"管理员保存失败"),
+    MANAGER_DELETE_EXCEPTION(9406,"管理员删除失败"),
+    
+    
+    /**
+     * 租户
+     */
+    TENANT_ID_ERROR(9500,"租户ID取不到"),
+    TENANT_CANNOT_BE_EMPLOYEE(9501,"租户管理员不能注册为该公司下普通员工"),
+    /**
+     * 应用角色
+     */
+    APP_ROLE_LITS_NONEXISTS(9601,"该公司应用角色列表为空"),
+    APP_DEPLOY_LIST_EXISTS(9602,"对应APP的配置包列表为空"),
+    
+    /**
+     * 角色异常
+     * */
+    ROLES_NOT_FOUND(9701,"角色不存在"),
+    ADD_ROLES_FIELD(9702,"角色添加失败"),
+    ALLOW_REPLACEMENT(9703,"允许创建"),
+    REPLACE_ADMIN_FIELD(9704,"新账号已经为本租户的租户管理员，不允许更换。"),
+    ROLE_CONFLICT(9705,"此账号已经为本租户的企业管理员，将替换为本租户的租户管理员?"),
+
+
+
+    /**
+     * 数据库异常码
+     */
+    DB_INSERT_FAIL(9911, "插入失败"),
+    DB_INSERT_EXCEPTION(9912, "插入异常"),
+    DB_DELETE_FAIL(9921, "删除失败"),
+    DB_DELETE_EXCEPTION(9922, "删除异常"),
+    DB_UPDATE_FAIL(9931, "更新失败"),
+    DB_UPDATE_EXCEPTION(9932, "更新异常"),
+    DB_SELECT_FAIL(9941, "获取失败"),
+    DB_SELECT_EXCEPTION(9942, "获取异常"),
+    DB_PARAM_ERROR(9981, "参数错误"),
+    DB_EMPTY_DATA(9991, "数据不存在"),
+	DB_EXCEPTION(9912,"数据库操作异常");
+
+
+    private static final Map<Integer, ErrorCodeEnum> values = new HashMap<>();
+
+    static {
+        for (ErrorCodeEnum ec : ErrorCodeEnum.values()) {
+            values.put(ec.code, ec);
+        }
+    }
+
+    private int code;
+    private String message;
+
+    ErrorCodeEnum(int code, String message) {
+        this.code = code;
+        this.message = message;
+    }
+
+    public static ErrorCodeEnum valueOf(int code) {
+        ErrorCodeEnum ec = values.get(code);
+        if (ec != null) {
+            return ec;
+        }
+        return UNKNOWN_ERROR;
+    }
+
+    public static ErrorCodeEnum valueOfCodeStr(String codeStr) {
+        int code = Integer.parseInt(codeStr);
+        ErrorCodeEnum ec = values.get(code);
+        if (ec != null) {
+            return ec;
+        }
+        return UNKNOWN_ERROR;
+    }
+
+    public int getCode() {
+        return code;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+}

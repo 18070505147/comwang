@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: com.chejet:jmatrix-push:1.0.0-SNAPSHOT">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/chejet/jmatrix-push/1.0.0-SNAPSHOT/jmatrix-push-1.0.0-20190109.090127-39.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/com/chejet/jmatrix-push/1.0.0-SNAPSHOT/jmatrix-push-1.0.0-20190109.090127-39-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/chejet/jmatrix-push/1.0.0-SNAPSHOT/jmatrix-push-1.0.0-20190109.090127-39-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

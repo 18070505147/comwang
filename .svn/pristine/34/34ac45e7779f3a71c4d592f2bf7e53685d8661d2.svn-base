@@ -1,0 +1,77 @@
+findAppRoleByCompany
+===
+	SELECT A.id as id , A.name as name, A.display_name,A.icon_url,A.exhibit_image_url,
+	C.id as roleId, C.name as roleName,C.company_id as companyId, c.tenant_id as tenantId  FROM sys_app A
+	INNER JOIN rel_company_app B ON 
+	A.id=B.app_id
+	LEFT JOIN sys_group_app_role C ON A.id = C.app_id
+	WHERE
+	B.company_id=#companyId#
+	AND B.tenant_id=#tenantId#
+	
+findAppModuleByManagerIdAndAppId
+===
+	SELECT A.app_id as appId,C.name as appName,A.deploymodule_id,B.name as deploymoduleName, A.manager_id , D.name FROM 	rel_manager_deploymodule A
+	LEFT JOIN sys_app_deploymodule B ON  A.deploymodule_id = B.id
+	LEFT JOIN sys_app C ON C.id = B.app_id 
+	LEFT JOIN sys_company_manager D  ON D.id = A.manager_id
+	WHERE 1=1
+	@if(!isEmpty(managerId)){
+		AND A.manager_id=#managerId#
+	@}
+	@if(!isEmpty(appId)){
+		AND A.app_id=#appId#
+	@}
+	
+	
+getCompanyAppList
+===
+
+	SELECT B.*  FROM rel_company_app A LEFT JOIN  sys_app B ON B.id = A.app_id where A.company_id =#companyId#;
+	
+getCompanyAppDict
+===
+
+	SELECT B.id, B.name  FROM rel_company_app A LEFT JOIN  sys_app B ON B.id = A.app_id where A.company_id =#companyId#;
+
+getAppDeployModuleList
+===
+
+	SELECT
+	    a.* 
+	FROM
+		    sys_app_deploymodule  a
+		    LEFT JOIN rel_version_deploymodule  b ON b.deploymodule_id = a.id
+		    LEFT JOIN sys_app_version  c ON c.id = b.version_id
+		    LEFT JOIN rel_tenant_app  d ON d.version_id = c.id 
+		WHERE
+		    d.app_id = #appId#;
+
+	
+	
+	
+query_tenant_app_list
+===
+
+SELECT
+        a.*,b.version_id AS `market_version_id`
+    FROM
+        sys_app AS a
+        JOIN rel_tenant_app AS b ON a.id = b.app_id
+        JOIN sys_tenant AS c ON c.id = b.tenant_id 
+        AND c.id =#tenantId#;
+
+query_app_deploy_module_list
+===
+
+
+SELECT
+    a.* 
+FROM
+    sys_app_deploymodule AS a
+    JOIN rel_version_deploymodule AS b ON b.deploymodule_id = a.id
+    JOIN sys_app_version AS c ON c.id = b.version_id
+    JOIN rel_tenant_app AS d ON ( d.version_id = c.id AND d.version_id = #versionId# AND d.tenant_id=#tenantId#) 
+WHERE
+    d.app_id = #appId#;
+

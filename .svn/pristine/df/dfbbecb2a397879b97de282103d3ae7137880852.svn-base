@@ -1,0 +1,53 @@
+package com.chejet.cloud.controller;
+
+import com.chejet.cloud.po.App;
+import com.chejet.cloud.response.ApiResp;
+import com.chejet.cloud.response.ResultBuilder;
+import com.chejet.cloud.service.ApplicationManagementService;
+import com.chejet.cloud.vo.AppVO;
+import org.beetl.sql.core.engine.PageQuery;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * @Author: Bean.Wang
+ * @Date: 2018/12/11 14:17
+ */
+@RestController
+@RequestMapping(value = "/app/{tenantId}", produces = "application/json;charset=UTF-8")
+public class ApplicationManagementController extends BaseController {
+    @Autowired
+    private ApplicationManagementService applicationManagementService;
+
+    @GetMapping(value = "/page")
+    public ApiResp pageFoApp(@PathVariable Long tenantId,
+                             @RequestParam(required = false) String nameCondition,
+                             @RequestParam Integer pageNo,
+                             @RequestParam(required = false) Integer pageSize) {
+        PageQuery<AppVO> appPageQuery = applicationManagementService.appFoPage(tenantId, nameCondition, pageNo, pageSize);
+        return ResultBuilder.buildDateSuccess(appPageQuery);
+    }
+
+    @GetMapping(value = "/list")
+    public ApiResp findNotAddedApp(@PathVariable Long tenantId) {
+        List<AppVO> notAddedApp = applicationManagementService.findNotAddedApp(tenantId);
+        return ResultBuilder.buildDateSuccess(notAddedApp);
+    }
+
+    @GetMapping(value = "/save/{appId}/{versionId}")
+    public ApiResp saveApp(@PathVariable Long tenantId,
+                           @PathVariable Long appId,
+                           @PathVariable Long versionId) {
+        applicationManagementService.saveApp(tenantId, appId, versionId);
+        return ResultBuilder.buildDateSuccess(null);
+    }
+
+    @GetMapping(value = "/byCompany/{companyId}")
+    public ApiResp getAppByCompanyId(@PathVariable Long tenantId,
+                                     @PathVariable Long companyId) {
+        List<App> appList = applicationManagementService.getAppByCompanyId(tenantId, companyId);
+        return ResultBuilder.buildDateSuccess(appList);
+    }
+}

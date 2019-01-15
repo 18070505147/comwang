@@ -1,0 +1,37 @@
+findAppFoTenant
+===
+SELECT * FROM sys_app A
+LEFT JOIN rel_tenant_app T ON A.id=T.app_id 
+WHERE T.tenant_id=#tenantId# 
+@trim(){
+    @if(!isEmpty(nameCondition)){
+    AND  A.name like #nameCondition#
+    @}  
+@}
+limit #pageN0#,#pageSize#
+
+findAppCountFoTenant
+===
+SELECT COUNT(*) FROM sys_app A
+LEFT JOIN rel_tenant_app T ON A.id=T.app_id 
+WHERE T.tenant_id=#tenantId#
+@trim(){
+   @if(!isEmpty(nameCondition)){
+       AND  A.name like #nameCondition#
+       @}
+@} 
+
+findNotAddedApp
+===
+SELECT * FROM sys_app  
+WHERE id not in 
+(SELECT app_id FROM rel_tenant_app WHERE tenant_id=#tenantId# )
+
+findAppByCompany
+===
+SELECT A.* FROM sys_app A
+INNER JOIN rel_company_app R ON 
+A.ID=R.app_id
+WHERE
+R.company_id=#companyId#
+AND R.tenant_id=#tenantId#

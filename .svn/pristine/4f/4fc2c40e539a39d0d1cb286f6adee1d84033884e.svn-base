@@ -1,0 +1,64 @@
+package com.chejet.cloud.controller;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.chejet.cloud.common.ErrorCodeEnum;
+import com.chejet.cloud.common.utils.CheckParam;
+import com.chejet.cloud.exception.BaseException;
+import com.chejet.cloud.response.ApiResp;
+import com.chejet.cloud.response.ResultBuilder;
+import com.chejet.cloud.service.LoginUserService;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * @author Neo.fang
+ * @creatTime 2018/12/13 0013
+ */
+@RestController
+@RequestMapping(value = "/register", produces = "application/json;charset=UTF-8")
+public class RegisterController {
+
+    @Autowired
+    private LoginUserService loginUserService;
+
+    @RequestMapping(value = "/sign_up", method = RequestMethod.POST)
+    public ApiResp register(@RequestBody String payload){
+        JSONObject obj = JSON.parseObject(payload);
+        if (obj == null
+                || StringUtils.isBlank(obj.getString("telephone"))
+                || StringUtils.isBlank(obj.getString("nickname"))
+                || StringUtils.isBlank(obj.getString("password"))
+                || StringUtils.isBlank(obj.getString("msgId"))
+
+                || StringUtils.isBlank(obj.getString("companyName"))
+                || StringUtils.isBlank(obj.getString("enterpriseType"))
+                || StringUtils.isBlank(obj.getString("legalPerson"))
+                || StringUtils.isBlank(obj.getString("contactPerson"))
+                || StringUtils.isBlank(obj.getString("contactPersonPhone"))
+                || StringUtils.isBlank(obj.getString("address"))
+                || StringUtils.isBlank(obj.getString("staffScale"))){
+            throw new BaseException(ErrorCodeEnum.PARAM_ERROR);
+        }
+        return ResultBuilder.buildDateSuccess(loginUserService.register(obj));
+    }
+
+
+    @RequestMapping(value = "/verification", method = RequestMethod.GET)
+    public ApiResp verificationTelephone(String telephone) {
+        if (StringUtils.isBlank(telephone)){
+            throw new BaseException(ErrorCodeEnum.PARAM_ERROR);
+        }
+        if (!CheckParam.isMobile(telephone)){
+            throw new BaseException(ErrorCodeEnum.PARAM_ERROR);
+        }
+        return ResultBuilder.buildDateSuccess(loginUserService.verificationPhoneNumber(telephone));
+    }
+
+}
+
+

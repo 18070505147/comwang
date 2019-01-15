@@ -1,0 +1,34 @@
+package com.chejet.cloud.service.hessianRpcApi.impl;
+
+import com.chejet.cloud.service.hessianRpcApi.AuthenticationRpcService;
+import com.chejet.cloud.service.hessianRpcApi.RpcPermission;
+import com.chejet.cloud.service.accessApi.TokenManager;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+/**
+ * @author Neo.fang
+ * @creatTime 2018/12/18 0018
+ */
+@Service
+public class AuthenticationRpcServiceImpl implements AuthenticationRpcService {
+
+    @Autowired
+    private TokenManager tokenManager;
+
+    @Override
+    public boolean validate(String token) {
+        return tokenManager.validate(token) != null;
+    }
+
+    @Override
+    public List<RpcPermission> findPermissionList(String token, String appId, Integer tenantId) {
+
+
+
+
+        return null;
+    }
+}

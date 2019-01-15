@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/chejet-api-gateway/chejet-api-gateway.iml" filepath="$PROJECT_DIR$/chejet-api-gateway/chejet-api-gateway.iml" />
+      <module fileurl="file://$PROJECT_DIR$/chejet-cloud.iml" filepath="$PROJECT_DIR$/chejet-cloud.iml" />
+      <module fileurl="file://$PROJECT_DIR$/chejet-config/chejet-config.iml" filepath="$PROJECT_DIR$/chejet-config/chejet-config.iml" />
+      <module fileurl="file://$PROJECT_DIR$/chejet-core/chejet-core.iml" filepath="$PROJECT_DIR$/chejet-core/chejet-core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/chejet-dal/chejet-dal.iml" filepath="$PROJECT_DIR$/chejet-dal/chejet-dal.iml" />
+      <module fileurl="file://$PROJECT_DIR$/chejet-platform/chejet-platform.iml" filepath="$PROJECT_DIR$/chejet-platform/chejet-platform.iml" />
+    </modules>
+  </component>
+</project>

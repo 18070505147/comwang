@@ -1,0 +1,92 @@
+package com.chejet.cloud.service.impl;
+
+
+import com.chejet.cloud.dao.ApplicationManagementMapper;
+import com.chejet.cloud.po.App;
+import com.chejet.cloud.po.RelTenantApp;
+import com.chejet.cloud.po.SysAppVersion;
+import com.chejet.cloud.service.ApplicationManagementService;
+import com.chejet.cloud.util.DateUtils;
+import com.chejet.cloud.util.LongIdGen;
+import com.chejet.cloud.vo.AppVO;
+import org.beetl.sql.core.SQLManager;
+import org.beetl.sql.core.engine.PageQuery;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+/**
+ * @Author: Bean.Wang
+ * @Date: 2018/12/11 14:18
+ */
+@Service
+public class ApplicationManagementServiceImpl implements ApplicationManagementService {
+    @Autowired
+    private SQLManager sqlManager;
+
+    @Autowired
+    private ApplicationManagementMapper managementMapper;
+
+    @Override
+    public PageQuery<AppVO> appFoPage(Long tenantId, String nameCondition, Integer pageNo, Integer pageSize) {
+        if (pageSize == null) {
+            pageSize = 10;
+        }
+        if (nameCondition != null) {
+            nameCondition = "%" + nameCondition + "%";
+        }
+        PageQuery<AppVO> pageQuery = new PageQuery<>();
+        pageQuery.setPageNumber(pageNo);
+        pageQuery.setPageSize(pageSize);
+        Integer count = managementMapper.findAppCountFoTenant(tenantId, nameCondition);
+        List<AppVO> appList = managementMapper.findAppFoTenant(tenantId, nameCondition, ((pageNo - 1) * pageSize), pageSize);
+        pageQuery.setTotalRow(count);
+        pageQuery.setList(appList);
+        return pageQuery;
+    }
+
+    @Override
+    public List<AppVO> findNotAddedApp(Long tenantId) {
+        List<App> notAddedApp = managementMapper.findNotAddedApp(tenantId);
+        List<AppVO> appVOList = new ArrayList<>();
+        notAddedApp.forEach(m -> {
+            AppVO appVO = new AppVO();
+            List<SysAppVersion> versionList = sqlManager.lambdaQuery(SysAppVersion.class)
+                    .andEq(SysAppVersion::getAppId, m.getId()).select();
+            appVO.setVersionList(versionList);
+            BeanUtils.copyProperties(m, appVO);
+            appVOList.add(appVO);
+        });
+        return appVOList;
+    }
+
+    @Override
+    public Boolean saveApp(Long tenantId, Long appId,Long versionId) {
+        RelTenantApp relTenantApp = new RelTenantApp();
+        relTenantApp.setId(LongIdGen.get().nextId());
+        relTenantApp.setAppId(appId);
+        relTenantApp.setTenantId(tenantId);
+        relTenantApp.setVersionId(versionId);
+        relTenantApp.setAppStatus(0);
+        Date date = null;
+        try {
+            date = DateUtils.parseDate(DateUtils.dateAdd(DateUtils.getDate(), 7));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        relTenantApp.setExpireTime(date);
+        int i = sqlManager.insertTemplate(relTenantApp);
+        return i == 1;
+    }
+
+
+    @Override
+    public  List<App> getAppByCompanyId(Long tenantId, Long companyId) {
+        List<App> appList = managementMapper.findAppByCompany(tenantId, companyId);
+        return appList;
+    }
+}

@@ -1,0 +1,133 @@
+package com.chejet.cloud.controller;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.chejet.cloud.annotation.Slog;
+import com.chejet.cloud.common.ErrorCodeEnum;
+import com.chejet.cloud.constant.SymbolicCode;
+import com.chejet.cloud.dto.LoginUser;
+import com.chejet.cloud.common.utils.CheckParam;
+import com.chejet.cloud.dto.UserGroup;
+import com.chejet.cloud.exception.BaseException;
+import com.chejet.cloud.response.ApiResp;
+import com.chejet.cloud.response.ResultBuilder;
+import com.chejet.cloud.service.LoginUserService;
+import com.chejet.cloud.service.accessApi.TokenManager;
+import com.chejet.cloud.config.JWTHelper;
+import com.chejet.cloud.common.utils.JwtUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.Objects;
+
+/**
+ * @author Neo.fang
+ * @creatTime 2018/12/13 0013
+ */
+@RestController
+@RequestMapping(value = "/login", produces = "application/json;charset=UTF-8")
+public class LoginController {
+
+    @Autowired
+    private TokenManager tokenManager;
+
+    @Autowired
+    private LoginUserService loginUserService;
+
+    @Slog(modelName = "租户登录", description = "执行用户登录操作", type = "login")
+    @RequestMapping(value = "/sign_in", method = RequestMethod.POST)
+    public ApiResp login(@RequestBody String payload, HttpServletRequest request, HttpServletResponse response) {
+        JSONObject obj = JSON.parseObject(payload);
+        if (obj == null
+                || StringUtils.isBlank(obj.getString("telephone"))
+                || StringUtils.isBlank(obj.getString("mode"))
+                || StringUtils.isBlank(obj.getString("password"))
+                || !CheckParam.isMobile(obj.getString("telephone"))
+                || StringUtils.isBlank(obj.getString("ip"))
+                || StringUtils.isBlank(obj.getString("deviceInfo"))
+                || StringUtils.isBlank(obj.getString("loginDevice"))){
+            throw new BaseException(ErrorCodeEnum.PARAM_ERROR);
+        }
+        LoginUser loginUser = loginUserService.login(obj);
+
+        if (loginUser.isLoginStatus()){
+            // token
+            String token = JwtUtils.getJwtFromRequest(request);
+            LoginUser validate = tokenManager.validate(token);
+            if (validate == null || !Objects.equals(validate.getUserId(), loginUser.getUserId())) {// 没有登录的情况,或匹配不一致
+                token = JWTHelper.createJwt(loginUser.getUserId(), loginUser.getAppId(), obj.getString("deviceInfo"));
+                // 此处修改为，带参是否去除token的时间校验
+                if (Objects.equals(obj.getInteger("keepLogin"),1)){
+                    tokenManager.addTokenNoExpired(token, loginUser);
+                }else {
+                    tokenManager.addToken(token, loginUser);
+                }
+                loginUser.setUserToken("Bearer " + token);
+                response.addHeader("Authorization", "Bearer " + token);
+            }else {
+                loginUser.setUserToken("Bearer " + token);
+            }
+            return ResultBuilder.buildDateSuccess(loginUser);
+        }else {
+            if (obj.getInteger("mode") == 2){
+                return ResultBuilder.buildCustomFail(ErrorCodeEnum.USER_MOBILE_VERIFICATION_ERROR.getCode(),ErrorCodeEnum.USER_MOBILE_VERIFICATION_ERROR.getMessage(), loginUser);
+            }else {
+                return ResultBuilder.buildCustomFail(ErrorCodeEnum.USER_USERNAME_PASSWORD_INVALID.getCode(),ErrorCodeEnum.USER_USERNAME_PASSWORD_INVALID.getMessage(), loginUser);
+            }
+        }
+    }
+
+
+    @RequestMapping(value = "/forget/password", method = RequestMethod.POST)
+    public ApiResp forgetPassword(@RequestBody String payload){
+        JSONObject obj = JSON.parseObject(payload);
+        if (obj == null
+                || StringUtils.isBlank(obj.getString("telephone"))
+                || StringUtils.isBlank(obj.getString("msgId"))
+                || StringUtils.isBlank(obj.getString("password"))
+                || !CheckParam.isMobile(obj.getString("telephone"))){
+            throw new BaseException(ErrorCodeEnum.PARAM_ERROR);
+        }
+        return ResultBuilder.buildDateSuccess(loginUserService.forgetPassword(obj));
+    }
+
+
+    @RequestMapping(value = "/switch/tenant", method = RequestMethod.POST)
+    public ApiResp switchTenantSelection(@RequestBody String payload, HttpServletRequest request) {
+        JSONObject obj = JSON.parseObject(payload);
+        if (obj == null
+                || StringUtils.isBlank(obj.getString("tenantId"))
+                || StringUtils.isBlank(obj.getString("roleType"))){
+            throw new BaseException(ErrorCodeEnum.PARAM_ERROR);
+        }
+        Long tenantId = obj.getLong("tenantId");
+        Integer roleType = obj.getInteger("roleType");
+
+        String authHeader = request.getHeader(SymbolicCode.AUTHORIZATION);
+        String token = null;
+        if (authHeader.startsWith(SymbolicCode.JWT_TOKEN_PRE)) {
+            token = authHeader.substring(7);
+        }
+
+        LoginUser loginUser = tokenManager.validate(token);
+        if (loginUser != null && loginUser.getUserGroups() != null && loginUser.getUserGroups().size() != 0){
+            for (UserGroup group:loginUser.getUserGroups()){
+                if (Objects.equals(group.getTenantId(), tenantId) && Objects.equals(group.getRoleType(), roleType)){
+                    group.setCurrentChoice(true);
+                }else {
+                    group.setCurrentChoice(false);
+                }
+            }
+            tokenManager.addToken(token, loginUser);
+        }
+
+        return ResultBuilder.buildDateSuccess(loginUser);
+    }
+
+}

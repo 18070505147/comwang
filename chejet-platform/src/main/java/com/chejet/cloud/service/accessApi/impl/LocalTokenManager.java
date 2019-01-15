@@ -1,0 +1,137 @@
+package com.chejet.cloud.service.accessApi.impl;
+
+import com.chejet.cloud.dto.LoginUser;
+import com.chejet.cloud.po.User;
+import com.chejet.cloud.service.accessApi.TokenManager;
+import org.beetl.sql.core.SQLManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.Date;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * 单实例环境令牌管理
+ * @author Random
+ */
+@Service
+public class LocalTokenManager extends TokenManager {
+
+	private final Logger logger = LoggerFactory.getLogger(getClass());
+
+	// 令牌存储结构
+	private final ConcurrentHashMap<String, DummyUser> tokenMap = new ConcurrentHashMap<String, DummyUser>();
+
+	// 用户关联令牌XX
+	private final ConcurrentHashMap<String, String> tokenId = new ConcurrentHashMap<String, String>();
+
+	@Autowired
+	private SQLManager sqlManager;
+
+	@Override
+	public void verifyExpired() {
+		// TODO token失效，rpc修改用户状态为下线，以token作为唯一判断用户是否登录在线的条件
+		Date now = new Date();
+		for (Entry<String, DummyUser> entry : tokenMap.entrySet()) {
+			String token = entry.getKey();
+			DummyUser dummyUser = entry.getValue();
+			if (dummyUser.expired == null){
+				logger.info("用户访问令牌过期检查, ID为：" + dummyUser.loginUser.getUserId() +"，token保持登录");
+				continue;
+			}
+			// 当前时间大于过期时间
+			if (now.compareTo(dummyUser.expired) > 0) {
+				User user = sqlManager.lambdaQuery(User.class).andEq(User::getId, dummyUser.loginUser.getUserId()).single();
+				if (user != null){
+					user.setMtime(new Date());
+					user.setLoginStatus(0);
+					sqlManager.updateTemplateById(user);
+				}
+
+				// 已过期，清除对应token
+				tokenMap.remove(token);
+				logger.info("用户访问令牌过期检查, ID为：" + dummyUser.loginUser.getUserId() +"，token已失效，token为 : " + token);
+			}else {
+				logger.info("用户访问令牌过期检查, ID为：" + dummyUser.loginUser.getUserId() +"，token正常，到期时间为：" + dummyUser.expired);
+			}
+		}
+	}
+
+	public void addToken(String token, LoginUser loginUser) {
+		DummyUser dummyUser = new DummyUser();
+		dummyUser.loginUser = loginUser;
+		// extendExpiredTime(dummyUser);
+		// 初始化用户token过期时间
+		dummyUser.expired = new Date(new Date().getTime() + tokenTimeout * 1000);
+		tokenMap.putIfAbsent(token, dummyUser);
+
+		// 加入ID标识token
+		tokenId.put(String.valueOf(loginUser.getUserId()), token);
+	}
+
+
+	public void addTokenNoExpired(String token, LoginUser loginUser) {
+		DummyUser dummyUser = new DummyUser();
+		dummyUser.loginUser = loginUser;
+		// 初始化不设置过期时间，后期验证时，过期时间为null,则为保持登录
+		dummyUser.expired = null;
+		// 因为putIfAbsent原子操作机制，这里手动删一下，为什么不直接用put覆盖原先的key
+		if (tokenMap.get(token) != null){
+			tokenMap.remove(token);
+		}
+		tokenMap.putIfAbsent(token, dummyUser);
+
+		// 加入ID标识token
+		tokenId.put(String.valueOf(loginUser.getUserId()), token);
+	}
+
+	/**
+	 * 根据Token验证登录，并返回登录信息
+	 * @param token
+	 * @return
+	 */
+	public LoginUser validate(String token) {
+		if (token == null){
+			return null;
+		}
+		DummyUser dummyUser = tokenMap.get(token);
+		if (dummyUser == null || dummyUser.loginUser == null) {
+			return null;
+		}
+		extendExpiredTime(dummyUser);
+		return dummyUser.loginUser;
+	}
+
+	public void remove(String token) {
+		tokenMap.remove(token);
+	}
+
+	/**
+	 * 扩展过期时间
+	 * 
+	 * @param dummyUser
+	 */
+	private void extendExpiredTime(DummyUser dummyUser) {
+		if (dummyUser.expired == null){
+			logger.info("ID为：" + dummyUser.loginUser.getUserId() + "，该用户token状态为保持登录，无需扩展过期时间");
+			return;
+		}
+		dummyUser.expired = new Date(new Date().getTime() + tokenTimeout * 1000);
+		logger.info("ID为：" + dummyUser.loginUser.getUserId() + "，该用户token到期时间已刷新为：" + dummyUser.expired);
+	}
+
+	// 复合结构体，含loginUser与过期时间expried两个成员
+	private class DummyUser {
+		private LoginUser loginUser;
+		private Date expired; // 过期时间
+	}
+
+
+	@Override
+	public String getToken(Integer userId) {
+		return tokenId.get(userId);
+	}
+}

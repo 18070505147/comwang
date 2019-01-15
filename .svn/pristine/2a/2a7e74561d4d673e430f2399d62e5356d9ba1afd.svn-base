@@ -1,0 +1,38 @@
+package com.chejet.cloud.builder;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import com.chejet.cloud.po.Company;
+
+public class CompanyTreeBuilder {
+	public static List<Company> toTreeList(List<Company> companyList) {
+		Map<Object, Company> maps = new HashMap<>();
+		List<Company> list = new ArrayList<>();
+		for (Company company : companyList) {
+			addTreeNode(company, maps, list);
+		}
+		return list;
+	}
+
+	public static void addTreeNode(Company company, Map<Object, Company> maps, List<Company> list) {
+		if (maps.containsKey(company.getId())) {
+			maps.get(company.getId()).setEntity(company);
+		} else {
+			maps.put(company.getId(), company);
+		}
+		if (company.getParentId() == null) {
+			list.add(maps.get(company.getId()));
+		} else {
+			if (maps.containsKey(company.getParentId())) {
+				maps.get(company.getParentId()).addChildren(company);
+			} else {
+				Company parent = new Company();
+				parent.addChildren(company);
+				maps.put(company.getParentId(), parent);
+			}
+		}
+	}
+}

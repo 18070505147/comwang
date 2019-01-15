@@ -1,0 +1,46 @@
+package com.chejet.cloud.scheduler;
+
+import com.chejet.cloud.po.RelTenantApp;
+import com.xxl.job.core.biz.model.ReturnT;
+import com.xxl.job.core.handler.IJobHandler;
+import com.xxl.job.core.handler.annotation.JobDisplayName;
+import com.xxl.job.core.handler.annotation.JobHandler;
+import org.beetl.sql.core.SQLManager;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import java.util.Date;
+import java.util.List;
+
+/**
+ * @Author: Bean.Wang
+ * @Date: 2018/12/21 18:54
+ */
+@Component
+@JobHandler(value = "testJobHandler")
+@JobDisplayName(value = "用户中心")
+public class PushJobHandler extends IJobHandler {
+    @Autowired
+    private SQLManager sqlManager;
+
+    @Override
+    public ReturnT<String> execute(String s) throws Exception {
+        Date date = new Date();
+        try {
+            List<RelTenantApp> appList = sqlManager.lambdaQuery(RelTenantApp.class)
+                    .andNotEq(RelTenantApp::getAppStatus, 1)
+                    .andLess(RelTenantApp::getExpireTime, date)
+                    .select();
+            if (appList.size() == 0) {
+                return ReturnT.SUCCESS;
+            }
+            appList.forEach(app -> {
+                app.setAppStatus(1);
+                sqlManager.updateTemplateById(app);
+            });
+        } catch (Exception e) {
+            return ReturnT.FAIL;
+        }
+        return ReturnT.SUCCESS;
+    }
+}

@@ -1,0 +1,173 @@
+package com.chejet.cloud.controller;
+
+import java.util.List;
+
+import com.chejet.cloud.vo.AppDeployModuleVO;
+import org.beetl.sql.core.engine.PageQuery;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.chejet.cloud.common.CurrentUserInfo;
+import com.chejet.cloud.response.ApiResp;
+import com.chejet.cloud.service.CompanyService;
+import com.chejet.cloud.po.App;
+import com.chejet.cloud.po.Company;
+import com.chejet.cloud.po.CompanyManager;
+import com.chejet.cloud.po.Employee;
+import com.chejet.cloud.po.RelCompanyApp;
+import com.chejet.cloud.vo.ItemVO;
+
+/**
+ * 公司管理api
+ * 
+ * @author ansen.zhu@carlt.com.cn
+ * @date 2018/12/13
+ */
+@RestController
+@RequestMapping(value = "/company", produces = "application/json;charset=UTF-8")
+public class CompanyController extends BaseController {
+	@Autowired
+	CompanyService companyService;
+
+	@RequestMapping(KEY_SAVE)
+	public ApiResp save(@RequestBody String payload) throws Exception {
+		Company company  = JSONObject.parseObject(payload, Company.class);
+		boolean temp = companyService.saveCompany(company, currentUser());
+		if (temp) {
+			return success(SAVE_SUCCESS_MSG);
+		} else {
+			return error(SAVE_FAIL_MSG);
+		}
+	}
+
+	@RequestMapping(KEY_REMOVE)
+	public ApiResp remove(Company company) throws Exception {
+		boolean temp = companyService.deleteCompany(company, currentUser());
+		if (temp == true) {
+			return success(DEL_SUCCESS_MSG);
+		} else {
+			return error(DEL_FAIL_MSG);
+		}
+	}
+
+	@RequestMapping(KEY_QUERY)
+	public ApiResp query(Company company) throws Exception {
+		List<Company> retList = companyService.queryCompany(company);
+		if (retList != null) {
+			return success(retList, QUERY_SUCCESS_MSG);
+		} else {
+			return error(QUERY_FAIL_MSG);
+		}
+	}
+
+	@RequestMapping(KEY_EDIT)
+	public ApiResp update(@RequestBody String payload) throws Exception {
+		Company company  = JSONObject.parseObject(payload, Company.class);
+		boolean temp = companyService.updateCompany(company);
+		if (temp) {
+			return success(UPDATE_SUCCESS_MSG);
+		} else {
+			return error(UPDATE_FAIL_MSG);
+		}
+	}
+
+	@RequestMapping("/dict")
+	public ApiResp dict(Company company) throws Exception {
+		List<ItemVO> listVO = companyService.listCompany(currentUser());
+		if (listVO != null) {
+			return success(listVO, PAGE_SUCCESS_MSG);
+		} else {
+			return error(PAGE_FAIL_MSG);
+		}
+	}
+
+	@RequestMapping(KEY_PAGE)
+	public ApiResp page(Company company) throws Exception {
+		PageQuery<Company> voPage = companyService.pageCompany(company, currentUser());
+		if (voPage != null) {
+			return success(voPage, PAGE_SUCCESS_MSG);
+		} else {
+			return error(PAGE_FAIL_MSG);
+		}
+	}
+
+	@RequestMapping(KEY_TREE)
+	public ApiResp tree(Company company) throws Exception {
+		List<Company> voTree = companyService.treeCompany(company, currentUser());
+		if (voTree != null) {
+			return success(voTree, PAGE_SUCCESS_MSG);
+		} else {
+			return error(PAGE_FAIL_MSG);
+		}
+	}
+
+	@RequestMapping("/staff_scale/dict")
+	public ApiResp dict() throws Exception {
+		List<ItemVO> listVO = getStaffScaleEnum();
+		if (listVO != null) {
+			return success(listVO, PAGE_SUCCESS_MSG);
+		} else {
+			return error(PAGE_FAIL_MSG);
+		}
+	}
+
+	@RequestMapping("/role/{companyId}")
+	public ApiResp role(@PathVariable Long companyId) throws Exception {
+		List<App> listVO = companyService.getCompanyRoleList(companyId, currentUser());// update返回值
+		if (listVO != null) {
+			return success(listVO, QUERY_SUCCESS_MSG);
+		} else {
+			return error(QUERY_FAIL_MSG);
+		}
+	}
+
+	@RequestMapping("/app/save")
+	public ApiResp app(@RequestBody String payload) throws Exception {
+		JSONArray jArray = JSONArray.parseArray(payload);
+		List<RelCompanyApp> rcaList = jArray.toJavaList(RelCompanyApp.class);
+		boolean temp = companyService.saveCompanyApp(rcaList, currentUser());// update返回值
+		if (temp) {
+			return success(SAVE_SUCCESS_MSG);
+		} else {
+			return error(SAVE_FAIL_MSG);
+		}
+	}
+
+	@RequestMapping("/app/list/{companyId}")
+	public ApiResp appList(@PathVariable Long companyId) throws Exception {
+		List<AppDeployModuleVO> li = companyService.listCompanyApp(companyId, currentUser());// update返回值
+		if (li!=null) {
+			return success(li,QUERY_SUCCESS_MSG);
+		} else {
+			return error(QUERY_FAIL_MSG);
+		}
+	}
+	
+	@RequestMapping("/app/dict/{companyId}")
+	public ApiResp appDict(@PathVariable Long companyId) throws Exception {
+		List<ItemVO> li = companyService.dictCompanyApp(companyId, currentUser());// update返回值
+		if (li!=null) {
+			return success(li,QUERY_SUCCESS_MSG);
+		} else {
+			return error(QUERY_FAIL_MSG);
+		}
+	}
+	
+
+	@RequestMapping(KEY_APP_DEPLOY_MODULE)
+	public ApiResp appListAndDeployModule() throws Exception {
+		List<AppDeployModuleVO> voTree= companyService.appListAndDeployModule(currentUser());
+		if (voTree !=null) {
+			return success(voTree, PAGE_SUCCESS_MSG);
+		} else {
+			return error(PAGE_FAIL_MSG);
+		}
+	}
+
+}

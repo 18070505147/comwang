@@ -1,0 +1,597 @@
+package com.chejet.cloud.service.impl;
+
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.beetl.sql.core.DSTransactionManager;
+import org.beetl.sql.core.SQLManager;
+import org.beetl.sql.core.SQLReady;
+import org.beetl.sql.core.engine.PageQuery;
+import org.beetl.sql.core.query.Query;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
+import com.chejet.cloud.builder.CompanyTreeBuilder;
+import com.chejet.cloud.common.CurrentUserInfo;
+import com.chejet.cloud.common.ErrorCodeEnum;
+import com.chejet.cloud.common.RoleTypeEnum;
+import com.chejet.cloud.dao.CompanyMapper;
+import com.chejet.cloud.exception.BizException;
+import com.chejet.cloud.po.App;
+import com.chejet.cloud.po.AppDeploymodule;
+import com.chejet.cloud.po.Company;
+import com.chejet.cloud.po.CompanyManager;
+import com.chejet.cloud.po.Department;
+import com.chejet.cloud.po.GroupAppRole;
+import com.chejet.cloud.po.RelCompanyApp;
+import com.chejet.cloud.po.RelManagerDeploymodule;
+import com.chejet.cloud.service.CompanyService;
+import com.chejet.cloud.util.LongIdGen;
+import com.chejet.cloud.vo.AppDeployModuleVO;
+import com.chejet.cloud.vo.AppModule;
+import com.chejet.cloud.vo.AppRole;
+import com.chejet.cloud.vo.DeployModuleVO;
+import com.chejet.cloud.vo.ItemVO;
+
+/**
+ * 公司管理biz实现
+ * 
+ * @author ansen.zhu@carlt.com.cn
+ * @date 2018/12/13
+ */
+@Service
+public class CompanyServiceImpl implements CompanyService {
+	Logger logger = LoggerFactory.getLogger(CompanyServiceImpl.class);
+
+	@Autowired
+	CompanyMapper companyMapper;
+	@Autowired
+	private SQLManager sqlManager;
+
+	@Override
+	public List<Company> treeCompany(Company company, CurrentUserInfo currentUser) {
+		List<Company> retList = null;
+		try {
+			List<Company> list = sqlManager.query(Company.class).andEq("tenant_id", currentUser.getTenantId()).select();
+			retList = CompanyTreeBuilder.toTreeList(list);
+		} catch (Exception e) {
+			throw new BizException(ErrorCodeEnum.COMPANY_TREE_EXCEPTION);
+		}
+
+		return retList;
+	}
+
+	@Override
+	public PageQuery<Company> pageCompany(Company company, CurrentUserInfo currentUser) {
+		PageQuery<Company> page = null;
+		List<Long> list = sqlManager.query(CompanyManager.class).andEq("tenant_id", currentUser.getTenantId())
+				.andEq("user_id", currentUser.getUserId()).select(Long.class, "company_id as id");
+		if (!list.isEmpty()) {
+
+			Query<Company> query = sqlManager.query(Company.class);
+			if (!StringUtils.isEmpty(company.getName())) {
+				query.andEq("name", company.getName());
+			}
+
+			if (!StringUtils.isEmpty(company.getContactPerson())) {
+				query.andEq("contact_person", company.getContactPerson());
+			}
+
+			if (!StringUtils.isEmpty(company.getContactPerson())) {
+				query.andEq("contact_person_phone", company.getContactPersonPhone());
+			}
+
+			page = query.andIn("id", list).page(company.getPageNumber(), company.getPageSize());
+		} else {
+			throw new BizException(ErrorCodeEnum.MANAGER_COMPANY_NOEXISTS);
+		}
+
+		return page;
+	}
+
+	@Override
+	public List<Company> queryCompany(Company company) {
+
+		List<Company> poList = null;
+		List<Company> list = sqlManager.query(Company.class).andEq("id", company.getId()).select();
+		if (!list.isEmpty()) {
+			Company com = list.get(0);
+			Query<Company> query2 = sqlManager.query(Company.class);
+			poList = query2.andEq("tenant_id", com.getTenantId())
+					.andBetween("left_value", com.getLeftValue(), com.getRightValue()).orderBy("left_value").select();
+		} else {
+			throw new BizException(ErrorCodeEnum.COMPANY_NOEXISTS);
+		}
+
+		return poList;
+	}
+
+	@Override
+	public boolean saveCompany(Company company, CurrentUserInfo currentUser) throws Exception {
+
+		int i = 0;
+
+		try {
+			long id = LongIdGen.get().nextId();
+			Date d = new Date();
+			List<Company> list = sqlManager.query(Company.class).andEq("tenant_id", currentUser.getTenantId()).select();
+			if (!list.isEmpty()) {
+				company.setId(id);
+
+				company.setCtime(d);
+				company.setMtime(d);
+				company.setLeftValue(1);
+				company.setRightValue(2);
+				company.setCompanyStatus(1);
+
+				Department department = new Department();
+				long id2 = LongIdGen.get().nextId();
+				department.setId(id2);
+				department.setCtime(d);
+				department.setMtime(d);
+				department.setLeftValue(1);
+				department.setRightValue(2);
+				department.setCompanyId(id);
+				department.setDescription(department.getDescription());
+				department.setName("总部");
+				department.setTenantId(currentUser.getTenantId());
+				department.setDepartmentStatus(1);
+				DSTransactionManager.start();
+				i = sqlManager.insertTemplate(company);
+				i = sqlManager.insertTemplate(department);
+				DSTransactionManager.commit();
+
+			} else {
+				if (company.getParentId() != null && company.getParentId() != 0L) {
+					List<Company> list2 = sqlManager.query(Company.class).andEq("id", company.getParentId()).select();
+					if (!list2.isEmpty()) {
+						Company parentCompany = list.get(0);
+
+						company.setId(id);
+						company.setCtime(d);
+						company.setMtime(d);
+						company.setLeftValue(parentCompany.getRightValue());
+						company.setRightValue(parentCompany.getRightValue() + 1);
+						company.setCompanyStatus(1);
+						DSTransactionManager.start();
+						sqlManager.executeUpdate(new SQLReady(
+								"update sys_company set right_value=right_value+2 where right_value>=? and tenant_id=?",
+								parentCompany.getRightValue(), parentCompany.getTenantId()));
+						sqlManager.executeUpdate(new SQLReady(
+								"update sys_company set left_value=left_value+2 where left_value>=? and tenant_id=?",
+								parentCompany.getRightValue(), parentCompany.getTenantId()));
+						i = sqlManager.insertTemplate(company);
+						DSTransactionManager.commit();
+					}
+				} else {
+					throw new BizException(ErrorCodeEnum.COMPANY_PARENT_NOEXISTS);
+				}
+			}
+
+		} catch (Exception e) {
+			DSTransactionManager.rollback();
+			e.printStackTrace();
+			throw e;
+		}
+
+		return i == 1;
+	}
+
+	@Override
+	public boolean deleteCompany(Company company, CurrentUserInfo currentUser) {
+		if (currentUser.getTenantId() != null) {
+			if (null != company.getId()) {
+				List<Company> list = sqlManager.query(Company.class).andEq("id", company.getId()).select();
+				if (!list.isEmpty()) {
+					Company com = list.get(0);
+					List<Company> poList = sqlManager.query(Company.class).andEq("tenant_id", com.getTenantId())
+							.andGreat("left_value", com.getLeftValue()).andLess("right_value", com.getRightValue())
+							.select();
+					if (poList.size() == 0) {
+						sqlManager.executeUpdate(new SQLReady("delete from sys_company where id=?", com.getId()));
+					} else {
+						throw new BizException(ErrorCodeEnum.DEPARTMENT_CHILD_EXCEPTION);
+					}
+				} else {
+					throw new BizException(ErrorCodeEnum.DEPARTMENT_NOEXISTS);
+				}
+			} else {
+				throw new BizException(ErrorCodeEnum.PARAM_ERROR);
+			}
+		} else {
+			throw new BizException(ErrorCodeEnum.TENANT_ID_ERROR);
+		}
+
+		return true;
+	}
+
+	@Override
+	public boolean updateCompany(Company company) {
+		int i = 0;
+		try {
+			Date d = new Date();
+			company.setMtime(d);
+			i = sqlManager.updateTemplateById(company);
+		} catch (Exception e) {
+			throw new BizException(ErrorCodeEnum.COMPANY_UPDATE_EXCEPTION);
+		}
+
+		return i == 1;
+	}
+
+	@Override
+	public List<ItemVO> listCompany(Company company, CurrentUserInfo currentUser) throws Exception {
+
+		List<ItemVO> list = null;
+		try {
+			list = sqlManager.query(Company.class).andEq("tenant_id", currentUser.getTenantId()).select(ItemVO.class,
+					"id, name");
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new BizException(ErrorCodeEnum.COMPANY_DICT_EXCEPTION);
+		}
+
+		return list;
+
+	}
+
+	@Override
+	public List<ItemVO> listCompany(CurrentUserInfo currentUser) {
+		List<ItemVO> list = null;
+		try {
+			if (currentUser != null && currentUser.getTenantId() != null) {
+				if (RoleTypeEnum.COMPANY_ADMIN.getValue().equals(currentUser.getRoleType())) {
+
+					list = sqlManager.execute(new SQLReady(
+							"select sc.id, sc.name from sys_company_manager  scm left join sys_company sc on sc.id = scm.company_id where scm.user_id =?  and scm.tenant_id=?",
+							currentUser.getUserId(), currentUser.getTenantId()), ItemVO.class);
+				} else if (RoleTypeEnum.TENANT_ADMIN.getValue().equals(currentUser.getRoleType())) {
+					list = sqlManager.query(Company.class).andEq("tenant_id", currentUser.getTenantId())
+							.select(ItemVO.class, "id, name");
+				}
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new BizException(ErrorCodeEnum.MANAGER_COMPANY_LIST_ERROR);
+		}
+		return list;
+	}
+
+	@Override
+	public List<CompanyManager> listCompanyManager(Long companyId, CurrentUserInfo currentUser) throws Exception {
+
+		List<CompanyManager> list = null;
+		try {
+			list = sqlManager.query(CompanyManager.class).andEq("company_id", companyId)
+					.andEq("tenant_id", currentUser.getTenantId()).select();
+
+			if (list != null && !list.isEmpty()) {
+				for (CompanyManager cm : list) {
+					Map<String, Object> params = new HashMap<String, Object>();
+					params.put("managerId", cm.getId());
+					List<AppModule> lo = sqlManager.select("company.findAppModuleByManagerIdAndAppId", AppModule.class,
+							params);
+					cm.setAppModuleList(lo);
+				}
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new BizException(ErrorCodeEnum.COMPANY_LIST_EXCEPTION);
+		}
+
+		return list;
+	}
+
+	@Override
+	public boolean saveCompanyManager(Long companyId, List<CompanyManager> companyManagerList,
+			CurrentUserInfo currentUser) throws Exception {
+
+		List<RelCompanyApp> alist = null;
+
+		try {
+			if (currentUser.getTenantId() != null) {
+				if (companyManagerList != null && !companyManagerList.isEmpty()) {
+					for (CompanyManager cm : companyManagerList) {
+						alist = sqlManager.query(RelCompanyApp.class).andEq("company_id", companyId)
+								.andEq("tenant_id", currentUser.getTenantId()).select();
+
+						long id = LongIdGen.get().nextId();
+						cm.setId(id);
+						Date d = new Date();
+						cm.setCtime(d);
+						cm.setMtime(d);
+						cm.setCompanyId(cm.getCompanyId());
+						cm.setEmployeeId(cm.getEmployeeId());
+						cm.setName(cm.getName());
+						cm.setUserId(cm.getUserId());
+						cm.setTenantId(currentUser.getTenantId());
+
+						List<RelManagerDeploymodule> list = null;
+						if (alist != null && !alist.isEmpty()) {
+							list = new ArrayList<RelManagerDeploymodule>(alist.size());
+							for (RelCompanyApp rca : alist) {
+								RelManagerDeploymodule rmf = new RelManagerDeploymodule();
+								rmf.setAppId(rca.getAppId());
+								rmf.setManagerId(id);
+								Date df = new Date();
+								rmf.setCtime(df);
+								rmf.setMtime(df);
+								list.add(rmf);
+							}
+
+						}
+
+						DSTransactionManager.start();
+							sqlManager.insertTemplate(cm);
+							if (list != null && !list.isEmpty()) {
+								sqlManager.insertBatch(RelManagerDeploymodule.class, list);
+							}
+						DSTransactionManager.commit();
+					}
+
+				} else {
+					throw new BizException(ErrorCodeEnum.MANAGER_LIST_ERROR);
+				}
+			} else {
+				throw new BizException(ErrorCodeEnum.MANAGER_SAVE_EXCEPTION);
+			}
+
+		} catch (Exception e) {
+			DSTransactionManager.rollback();
+			e.printStackTrace();
+			throw e;
+		}
+
+		return true;
+	}
+
+	@Override
+	public boolean deleteCompanyManager(CompanyManager companyManager, CurrentUserInfo currentUser) throws Exception {
+		try {
+			if (companyManager != null && companyManager.getId() != null) {
+				if (currentUser.getTenantId() != null) {
+					DSTransactionManager.start();
+					sqlManager
+							.executeUpdate(new SQLReady("delete from sys_company where id=?", companyManager.getId()));
+					sqlManager.executeUpdate(new SQLReady("delete from rel_company_deploymodule where manager_id=?",
+							companyManager.getId()));
+					DSTransactionManager.commit();
+
+				} else {
+					throw new BizException(ErrorCodeEnum.TENANT_ID_ERROR);
+				}
+			} else {
+				throw new BizException(ErrorCodeEnum.PARAM_ERROR);
+			}
+
+		} catch (Exception e) {
+			DSTransactionManager.rollback();
+			e.printStackTrace();
+			throw new BizException(ErrorCodeEnum.MANAGER_DELETE_EXCEPTION);
+		}
+
+		return true;
+	}
+
+	@Override
+	public boolean editManagerDeploymodule(Long managerId, Long appId, List<RelManagerDeploymodule> moduleList,
+			CurrentUserInfo currentUser) throws Exception {
+		int i = 0;
+		try {
+			if (moduleList != null && managerId != null && !moduleList.isEmpty()) {
+				if (currentUser.getTenantId() != null) {
+
+					sqlManager.executeUpdate(new SQLReady(
+							"delete from rel_manager_deploymodule where app_id=? and manager_id=?", appId, managerId));
+					Date d = new Date();
+					for (RelManagerDeploymodule rmd : moduleList) {
+						long id = LongIdGen.get().nextId();
+						rmd.setId(id);
+						rmd.setCtime(d);
+						rmd.setMtime(d);
+					}
+
+				} else {
+					throw new BizException(ErrorCodeEnum.TENANT_ID_ERROR);
+				}
+			} else {
+				throw new BizException(ErrorCodeEnum.PARAM_ERROR);
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw e;
+		}
+
+		return i == 1;
+	}
+
+	@Override
+	public List<App> getCompanyRoleList(Long companyId, CurrentUserInfo currentUser) throws Exception {
+		List<App> list = new ArrayList<App>();
+		if (currentUser.getTenantId() != null) {
+			Map<String, Object> params = new HashMap<String, Object>();
+			params.put("companyId", companyId);
+			params.put("tenantId", currentUser.getTenantId());
+			List<AppRole> lo = sqlManager.select("company.findAppRoleByCompany", AppRole.class, params);
+
+			if (lo != null && !lo.isEmpty()) {
+				Map<String, Object> app = new HashMap<String, Object>();
+				for (AppRole o : lo) {
+					if (!app.containsKey(o.getId().toString())) {
+						app.put(o.getId().toString(), new App());
+						App a = (App) app.get(o.getId().toString());
+						a.setId(o.getId());
+						a.setName(o.getName());
+						a.setIconUrl(o.getIconUrl());
+						a.setExhibitImageUrl(o.getExhibitImageUrl());
+						a.setDisplayName(o.getDisplayName());
+						ArrayList<GroupAppRole> li = new ArrayList<GroupAppRole>();
+						GroupAppRole gar = new GroupAppRole();
+						gar.setAppId(o.getId());
+						gar.setId(o.getRoleId());
+						gar.setName(o.getRoleName());
+						li.add(gar);
+						a.setListAppRole(li);
+						list.add(a);
+					} else {
+						App a = (App) app.get(o.getId().toString());
+						List<GroupAppRole> li = a.getListAppRole();
+						GroupAppRole gar = new GroupAppRole();
+						gar.setAppId(o.getId());
+						gar.setId(o.getRoleId());
+						gar.setName(o.getRoleName());
+						li.add(gar);
+					}
+				}
+			}
+		} else {
+			throw new BizException(ErrorCodeEnum.TENANT_ID_ERROR);
+		}
+
+		return list;
+	}
+
+	@Override
+	public boolean saveCompanyApp(List<RelCompanyApp> rcaList, CurrentUserInfo currentUser) throws Exception {
+
+		try {
+			if (rcaList != null && !rcaList.isEmpty()) {
+				Date d = new Date();
+				for (RelCompanyApp cm : rcaList) {
+					long id = LongIdGen.get().nextId();
+					cm.setId(id);
+					cm.setCtime(d);
+					cm.setMtime(d);
+					cm.setTenantId(currentUser.getTenantId());
+				}
+				DSTransactionManager.start();
+				sqlManager.insertBatch(RelCompanyApp.class, rcaList);
+				DSTransactionManager.commit();
+			} else {
+				throw new BizException(ErrorCodeEnum.PARAM_ERROR);
+			}
+		} catch (Exception e) {
+			DSTransactionManager.rollback();
+			e.printStackTrace();
+			throw e;
+		}
+
+		return true;
+	}
+
+	@Override
+	public List<AppModule> getManagerDeploymodule(Long managerId, Long appId, CurrentUserInfo currentUser) {
+		List<AppModule> lo = null;
+		if (currentUser.getTenantId() != null) {
+			Map<String, Object> params = new HashMap<String, Object>();
+			params.put("managerId", managerId);
+			params.put("appId", appId);
+			lo = sqlManager.select("company.findAppModuleByManagerIdAndAppId", AppModule.class, params);
+		} else {
+			throw new BizException(ErrorCodeEnum.TENANT_ID_ERROR);
+		}
+
+		return lo;
+	}
+
+	@Override
+	public List<AppDeployModuleVO> appListAndDeployModule(CurrentUserInfo currentUserInfo) throws Exception {
+		List<AppDeployModuleVO> appList = new ArrayList<>();
+		DSTransactionManager.start();
+		try {
+			// 优化建议：循环查询需要优化
+			try {
+				Map<String, Object> params = new HashMap<>();
+				params.put("tenantId", currentUserInfo.getTenantId());
+				params.put("userId", currentUserInfo.getUserId());
+				appList = sqlManager.select("company.query_tenant_app_list", AppDeployModuleVO.class, params);
+				if (!CollectionUtils.isEmpty(appList)) {
+					for (AppDeployModuleVO app : appList) {
+						params.put("appId", app.getId());
+						params.put("versionId", app.getMarketVersionId());
+						List<AppDeploymodule> deploymodules = sqlManager.select("company.query_app_deploy_module_list",
+								AppDeploymodule.class, params);
+						List<DeployModuleVO> deployModuleVOList = new ArrayList<>();
+						if (!CollectionUtils.isEmpty(deploymodules)) {
+							for (AppDeploymodule deploymodule : deploymodules) {
+								DeployModuleVO dvo = new DeployModuleVO();
+								BeanUtils.copyProperties(deploymodule, dvo);
+								deployModuleVOList.add(dvo);
+							}
+						}
+						app.setDeployModules(deployModuleVOList);
+					}
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				throw new BizException(ErrorCodeEnum.DB_SELECT_EXCEPTION);
+			}
+		} catch (Exception e) {
+			DSTransactionManager.rollback();
+			e.printStackTrace();
+			throw e;
+		}
+
+		DSTransactionManager.commit();
+		return appList;
+	}
+
+	@Override
+	public List<AppDeployModuleVO> listCompanyApp(Long companyId, CurrentUserInfo currentUser) throws Exception {
+		List<AppDeployModuleVO> appList = new ArrayList<>();
+
+		try {
+			Map<String, Object> params = new HashMap<>();
+			params.put("companyId", companyId);
+			appList = sqlManager.select("company.getCompanyAppList", AppDeployModuleVO.class, params);
+			if (!CollectionUtils.isEmpty(appList)) {
+				for (AppDeployModuleVO app : appList) {
+					params.put("appId", app.getId());
+					List<AppDeploymodule> deploymodules = sqlManager.select("company.getAppDeployModuleList",
+							AppDeploymodule.class, params);
+					List<DeployModuleVO> deployModuleVOList = new ArrayList<>();
+					if (!CollectionUtils.isEmpty(deploymodules)) {
+						for (AppDeploymodule deploymodule : deploymodules) {
+							DeployModuleVO dvo = new DeployModuleVO();
+							BeanUtils.copyProperties(deploymodule, dvo);
+							deployModuleVOList.add(dvo);
+						}
+					}
+					app.setDeployModules(deployModuleVOList);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new BizException(ErrorCodeEnum.DB_SELECT_EXCEPTION);
+		}
+
+		return appList;
+	}
+
+	@Override
+	public List<ItemVO> dictCompanyApp(Long companyId, CurrentUserInfo currentUser) throws Exception {
+		List<ItemVO> appList = new ArrayList<>();
+		try {
+			Map<String, Object> params = new HashMap<>();
+			params.put("companyId", companyId);
+			appList = sqlManager.select("company.getCompanyAppDict", ItemVO.class, params);
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new BizException(ErrorCodeEnum.DB_SELECT_EXCEPTION);
+		}
+
+		return appList;
+	}
+
+}

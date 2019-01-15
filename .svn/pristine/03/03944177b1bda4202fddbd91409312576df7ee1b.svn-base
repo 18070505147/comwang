@@ -1,0 +1,55 @@
+package com.chejet.cloud.config;
+
+import com.xxl.job.core.executor.impl.XxlJobSpringExecutor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * @Author: Bean.Wang
+ * @Date: 2018/12/21 9:50
+ */
+//@Configuration
+@ComponentScan("com.chejet.cloud.scheduler")
+public class DTSJobConfig {
+    private Logger logger = LoggerFactory.getLogger(DTSJobConfig.class);
+    @Value("${dts.job.admin.addresses}")
+    private String adminAddresses;
+
+    @Value("${dts.job.executor.appname}")
+    private String appName;
+
+    @Value("${dts.job.executor.ip}")
+    private String ip;
+
+    @Value("${dts.job.executor.port}")
+    private int port;
+
+    @Value("${dts.job.accessToken}")
+    private String accessToken;
+
+    @Value("${dts.job.executor.logpath}")
+    private String logPath;
+
+    @Value("${dts.job.executor.logretentiondays}")
+    private int logRetentionDays;
+
+
+    @Bean(initMethod = "start", destroyMethod = "destroy")
+    public XxlJobSpringExecutor xxlJobExecutor() {
+        logger.info(">>>>>>>>>>> xxl-job config init.");
+        XxlJobSpringExecutor xxlJobSpringExecutor = new XxlJobSpringExecutor();
+        xxlJobSpringExecutor.setAdminAddresses(adminAddresses);
+        xxlJobSpringExecutor.setAppName(appName);
+        xxlJobSpringExecutor.setIp(ip);
+        xxlJobSpringExecutor.setPort(port);
+        xxlJobSpringExecutor.setAccessToken(accessToken);
+        xxlJobSpringExecutor.setLogPath(logPath);
+        xxlJobSpringExecutor.setLogRetentionDays(logRetentionDays);
+
+        return xxlJobSpringExecutor;
+    }
+}

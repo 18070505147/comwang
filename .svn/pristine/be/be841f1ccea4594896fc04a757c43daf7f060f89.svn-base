@@ -1,0 +1,70 @@
+package com.chejet.cloud.config;
+
+import com.alibaba.druid.pool.DruidDataSource;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.PropertySource;
+
+import javax.sql.DataSource;
+
+/**
+ * 连接池配置信息
+ * 
+ * @author ansen.zhu@carlt.com.cn
+ * @date 2018/12/04
+ */
+@Configuration
+public class DruidConfiguration {
+
+	private String url = "jdbc:mysql://192.168.1.94:3306/ucenter?characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Hongkong&autoReconnect=true";
+	private String username = "carlt";
+	private String password = "carlt";
+
+//	private String url = "jdbc:mysql://47.99.38.28:8091/ucenter?characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Hongkong&autoReconnect=true";
+//	private String username = "carlt";
+//	private String password = "qwer!@#$1234";
+
+	private int maxActive = 100;
+
+	private int initialSize = 5;
+
+	private long maxWaitMillis = 5000;
+
+	private int minIdle = 5;
+
+	private long timeBetweenEvictionRunsMillis = 90000;
+
+	private long minEvictableIdleTimeMillis = 300000;
+
+	private String validationQuery = "SELECT 1";
+
+	private boolean testWhileIdle = true;
+
+	private boolean testOnBorrow = true;
+
+	private boolean testOnReturn = false;
+
+	@Bean(name = "dataSource")
+	public DataSource getDataSource() {
+		DruidDataSource druidDataSource = new DruidDataSource();
+		druidDataSource.setName("dataSource");
+		druidDataSource.setUrl(url);
+		druidDataSource.setUsername(username);
+		druidDataSource.setPassword(password);
+		druidDataSource.setMaxActive(maxActive);
+		druidDataSource.setInitialSize(initialSize);
+		druidDataSource.setMaxWait(maxWaitMillis);
+		druidDataSource.setMinIdle(minIdle);
+		druidDataSource.setTimeBetweenEvictionRunsMillis(timeBetweenEvictionRunsMillis);
+		druidDataSource.setMinEvictableIdleTimeMillis(minEvictableIdleTimeMillis);
+		druidDataSource.setValidationQuery(validationQuery);
+		druidDataSource.setTestWhileIdle(testWhileIdle);
+		druidDataSource.setTestOnBorrow(testOnBorrow);
+		druidDataSource.setTestOnReturn(testOnReturn);
+		return druidDataSource;
+
+	}
+}

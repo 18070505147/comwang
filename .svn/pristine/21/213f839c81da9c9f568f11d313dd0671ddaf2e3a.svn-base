@@ -1,0 +1,84 @@
+findUserFoRole
+===
+SELECT U.id AS userId,
+u.name AS userName,
+u.telephone,
+c.id AS companyId,
+C.NAME AS companyName,
+d.id AS departmentId,
+D.NAME AS departmentName
+FROM sys_employee E
+LEFT JOIN sys_company C
+ON E.company_id=C.id
+LEFT JOIN sys_department D
+ON D.ID=E.department_id
+LEFT JOIN sys_user U
+ON U.id=E.user_id
+WHERE E.company_id=#companyId#
+AND E.tenant_id=#tenantId#
+AND E.status=1
+AND E.user_id NOT IN (
+SELECT user_id FROM rel_user_group_role
+WHERE app_id=#appId#
+AND tenant_id=#tenantId#
+AND company_id=#companyId#
+AND role_id=#roleId#
+)
+@trim(){
+   @if(!isEmpty(condition)){
+       AND (
+       u.telephone like #condition#
+       or  u.NAME like #condition#) 
+    @} 
+@} 
+limit #pageN0#,#pageSize#
+
+findUserFoRoleCount
+===
+SELECT COUNT(*)
+FROM sys_employee E
+LEFT JOIN sys_company C
+ON E.company_id=C.id
+LEFT JOIN sys_department D
+ON D.ID=E.department_id
+LEFT JOIN sys_user U
+ON U.id=E.user_id
+WHERE E.company_id=#companyId#
+AND E.tenant_id=#tenantId#
+AND E.status=1
+AND E.user_id NOT IN (
+SELECT user_id FROM rel_user_group_role
+WHERE app_id=#appId#
+AND tenant_id=#tenantId#
+AND company_id=#companyId#
+AND role_id=#roleId#
+)
+@trim(){
+   @if(!isEmpty(condition)){
+       AND (
+       u.telephone like #condition#
+       or  u.NAME like #condition#) 
+    @} 
+@} 
+
+findRoleUser
+===
+SELECT u.id AS userId,
+u.name AS userName,
+u.telephone,
+c.id AS companyId,
+C.NAME AS companyName,
+d.id AS departmentId,
+D.NAME AS departmentName
+FROM sys_employee E
+INNER JOIN (SELECT * FROM `rel_user_group_role` 
+WHERE role_id=#roleId#
+AND tenant_id=#tenantId#
+) A
+ON E.user_id=A.user_id
+LEFT JOIN sys_company C
+ON E.company_id=C.id
+LEFT JOIN sys_department D
+ON D.ID=E.department_id
+LEFT JOIN sys_user U
+ON U.id=E.user_id

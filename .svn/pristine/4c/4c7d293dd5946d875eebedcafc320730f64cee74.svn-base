@@ -1,0 +1,66 @@
+
+
+
+druid.datasource.username = carlt
+druid.datasource.password = qwer!@#$1234
+druid.datasource.url = jdbc:mysql://47.99.38.28:8091/ucenter?characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Hongkong&autoReconnect=true
+druid.datasource.driver = com.mysql.cj.jdbc.Driver
+#\u8BBE\u7F6E\u6570\u636E\u5E93\u8FDE\u63A5\u7684\u521D\u59CB\u8FDE\u63A5\u6570
+druid.datasource.initSize = 5
+#\u8BBE\u7F6E\u6700\u5C0F\u8FDE\u63A5\u6570
+druid.datasource.minIdle = 5
+#\u8BBE\u7F6E\u6570\u636E\u5E93\u8FDE\u63A5\u6700\u5927\u4E2A\u6570
+druid.datasource.maxActive = 100
+#\u83B7\u53D6\u8FDE\u63A5\u8D85\u65F6\u65F6\u95F4
+druid.datasource.maxWait = 5000
+#\u83B7\u53D6\u6570\u636E\u5E93\u8FDE\u63A5\u7684\u65F6\u5019\uFF0C\u6821\u9A8C\u662F\u5426\u53EF\u7528\uFF08\u9632\u6B62\u83B7\u53D6\u5230\u7684\u8FDE\u63A5\u4E0D\u53EF\u7528\uFF09,\u4F1A\u5F71\u54CD\u6027\u80FD
+druid.datasource.validationQuery=SELECT 1
+druid.datasource.testWhileIdle=true
+druid.datasource.testOnBorrow = true
+druid.datasource.testOnReturn=false
+#\u914D\u7F6E\u4E00\u4E2A\u4E2A\u8FDE\u63A5\u5728\u6C60\u4E2D\u6700\u65B0\u7684\u751F\u5B58\u65F6\u95F4\uFF0C\u5355\u4F4D\u6BEB\u79D2
+druid.datasource.minEvictableIdleTimeMillis = 300000
+#\u8BBE\u7F6E\u8FDE\u63A5\u6709\u6548\u6027\u68C0\u6D4B\u65F6\u95F4
+druid.datasource.timeBetweenEvictionRunsMillis = 90000
+#\u628A\u8FDE\u63A5\u6C60\u914D\u7F6E\u4E2D\u7684removeAbandonedTimeout\u53C2\u6570\u8C03\u6574\u4E3A30\u5206\u949F
+druid.datasource.removeAbandonedTimeout = 1800
+
+
+#\u7EBF\u7A0B\u6C60\u914D\u7F6E
+#\u6838\u5FC3\u7EBF\u7A0B\u6C60\u6570
+threadpool.corePoolSize=10
+#\u6700\u5927\u7EBF\u7A0B
+threadpool.maxPoolSize=20
+#\u961F\u5217\u5BB9\u91CF
+threadpool.queueCapacity=1000
+#\u5FC3\u8DF3\u65F6\u95F4
+threadpool.keepAliveSeconds=300
+
+#\u6587\u4EF6\u4E0A\u4F20\u914D\u7F6E
+#\u5355\u4E2A\u6587\u4EF6\u6700\u5927
+fileupload.maxFileSize=50Mb
+#\u8BBE\u7F6E\u603B\u4E0A\u4F20\u6570\u636E\u603B\u5927\u5C0F
+fileupload.maxRequestSize=100MB
+
+#cors\u914D\u7F6E
+#\u5141\u8BB8\u672C\u5730\u8BBF\u95EE
+corsconfig.allowedOrigin=http://localhost:${server.port}
+#\u5141\u8BB8\u4EFB\u4F55\u5934
+corsconfig.allowedHeader=*
+#\u5141\u8BB8\u4EFB\u4F55\u65B9\u6CD5\uFF08post\u3001get\u7B49\uFF09
+corsconfig.allowedMethod=*
+#\u5141\u8BB8withCredentials\u62A5\u6587\u5934
+corsconfig.allowCredentials=true
+corsconfig.allowPath=/**
+
+
+jwt.publicKey: MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCE+qGSDvz/SJR1kk79/RQ6CivapLCtygJklFGuxMjnt8oSpUOILaUNEuSLx224yVzCqgvmtQwWi3txIxhw6M8h7ZHG7uUwbGjBzi6h7S6AZjWt3UUJe6LSkuKqeD2rmp8XF5nlJ7fIXxWxfTlHYSeeIhF5pgyxaAzbvf0Cw9Rv+QIDAQAB
+jwt.privateKey: MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAIT6oZIO/P9IlHWSTv39FDoKK9qksK3KAmSUUa7EyOe3yhKlQ4gtpQ0S5IvHbbjJXMKqC+a1DBaLe3EjGHDozyHtkcbu5TBsaMHOLqHtLoBmNa3dRQl7otKS4qp4PauanxcXmeUnt8hfFbF9OUdhJ54iEXmmDLFoDNu9/QLD1G/5AgMBAAECgYBs1tY3PZ1FNJqOQFn2+JT9jCWopvMUyyp6OAtDCD2Hqp3x9OH5K6LTuIrm/SuI+wa5LYTgJ37lVPSL/TWb9HDTFv68wa5/srSSGUFgviHf/b7Qy3POZx0C8QQBhPY04MjS+QAyeZ/r7lUe8u1CkhSHg9lcezt/Y/F9T/B+I79SgQJBAOUuNaPjIiG0ybyMm9BhJA/JDiUuY70DIDY+nknpi5NAA3GHYYq6VQl6EMd90FRP88zmg+CkGErT9DKyYwI29F0CQQCUimrX4N7T5zjypubEyKKhL/ZNMwt7S50RDGu99v6C26REgZCCcXRV3sMSc9m2LVWvTsWQwgEVDCamS6oBsbBNAkEA1O4cFErBuYNZM/+H/RFkCe6JX+476K7wzLVdJ9r/PS5qhJ59+ACrZYSt9ktkthEauTMrMBoGH+/RoRCwgKxCWQJADh9m7yWDKhSG1pNFx5nn1Hlx6n8a7VsQEOnkaIhORHTLlnPXIH/W9r8aPuvi3C5NQkC0CgJYBf9EwXTaMhUJ1QJARAuJ5dHe4Fzi4lijWpOwf68G+q1fhFqAPHd06oX/zPhzOZKu62ZZ8Zeu6iZYpdnKJnIanKmSmg4zBJSmC6lcgQ==
+
+dts.job.admin.addresses: http://47.98.38.28:8094
+dts.job.executor.appname: ucenter-executor-sample
+dts.job.executor.ip:
+dts.job.executor.port: 8096
+dts.job.executor.logpath: /var/www/logs/xxl-job/jobhandler/
+dts.job.executor.logretentiondays: 5
+dts.job.accessToken:

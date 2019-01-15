@@ -1,0 +1,19 @@
+package com.chejet.cloud.dao;
+
+import com.chejet.cloud.po.GroupAppRole;
+import com.chejet.cloud.po.User;
+import org.beetl.sql.core.annotatoin.Param;
+import org.beetl.sql.core.mapper.BaseMapper;
+
+import java.util.List;
+
+/**
+ * @Author: Bean.Wang
+ * @Date: 2018/12/12 14:31
+ */
+public interface ReplaceTenantAdminMapper extends BaseMapper<User> {
+
+    String findTelephoneByTenantId(@Param("tenantId")Long tenantId);
+
+    GroupAppRole findUserRoles(@Param("tenantId")Long tenantId,@Param("userId")Long userId);
+}

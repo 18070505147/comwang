@@ -1,0 +1,328 @@
+package com.chejet.cloud.service.impl;
+
+import com.alibaba.fastjson.JSONObject;
+import com.chejet.cloud.common.ErrorCodeEnum;
+import com.chejet.cloud.dao.UserGroupRoleMapper;
+import com.chejet.cloud.dto.LoginUser;
+import com.chejet.cloud.dto.UserGroup;
+import com.chejet.cloud.exception.BaseException;
+import com.chejet.cloud.po.*;
+import com.chejet.cloud.service.LoginUserService;
+import com.chejet.cloud.service.VerificationCodeService;
+import com.chejet.cloud.util.PasswordProvider;
+import com.chejet.cloud.util.LongIdGen;
+import com.chejet.jmatrix.push.SmsValidateResult;
+import org.apache.commons.lang3.StringUtils;
+import org.beetl.sql.core.SQLManager;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * @author Neo.fang
+ * @creatTime 2018/12/13 0013
+ */
+@Service
+public class LoginUserServiceImpl implements LoginUserService {
+
+    @Autowired
+    private SQLManager sqlManager;
+
+    @Autowired
+    private VerificationCodeService verificationCodeService;
+
+    @Autowired
+    private UserGroupRoleMapper userGroupRoleMapper;
+
+
+    @Override
+    @Transactional
+    public LoginUser login(JSONObject object) {
+        String telephone = object.getString("telephone");
+        String password = object.getString("password");
+        Integer mode = object.getInteger("mode");
+        String ip = object.getString("ip");
+        String deviceInfo = object.getString("deviceInfo");
+        Integer loginDevice = object.getInteger("loginDevice");
+
+        Date now = new Date();
+
+        // 获取用户信息
+        User user = sqlManager.lambdaQuery(User.class).andEq(User::getTelephone, telephone).single();
+        if (user == null){
+            throw new BaseException(ErrorCodeEnum.USER_INVALID);
+        }
+
+        // 判断口令密码是否正确
+        boolean isCorrect = false;
+        LoginUser loginUser = new LoginUser();
+        switch (mode){
+            case 1:
+                // 密码登录
+                Integer passwordLoginErrorCount = checkPasswordLoginErrorCount(user.getId());
+
+                if (Objects.equals(user.getPassword(), PasswordProvider.encrypt(password))){
+                    isCorrect = true;
+                }else {
+                    loginUser.setLoginErrorCount(passwordLoginErrorCount + 1);
+                }
+                break;
+            case 2:
+                // 短信登录;
+                if (StringUtils.isBlank(object.getString("msgId"))){
+                    throw new BaseException(ErrorCodeEnum.PARAM_ERROR);
+                }
+                SmsValidateResult smsValidateResult;
+                try {
+                    smsValidateResult = verificationCodeService.validVerificationCode(object.getLong("msgId"), password);
+                } catch (Exception e) {
+                    throw new BaseException(ErrorCodeEnum.MSG_SENDING_EXCEPTION);
+                }
+                if (smsValidateResult.isStatus() && Objects.equals(String.valueOf(smsValidateResult.getMobile()), telephone)){
+                    isCorrect = true;
+                }
+                break;
+            default:
+                throw new BaseException(ErrorCodeEnum.ERROR_IN_LOGIN_MODE);
+        }
+
+
+        if (isCorrect){
+            if (!Objects.equals(user.getAccountStatus(), 1)){
+                throw new BaseException(ErrorCodeEnum.ACCOUNT_DISABLED_OR_CANCELLED);
+            }
+            // 查询用户租户企业角色信息
+            List<UserGroup> userGroups = userGroupRoleMapper.findUserTenantRole(user.getId());
+            if (userGroups == null || userGroups.size() == 0){
+                throw new BaseException(ErrorCodeEnum.USER_ROLE_INVALID);
+            }
+            for (UserGroup group:userGroups){
+                if (userGroups.size() == 1){
+                    group.setCurrentChoice(true);
+                }else {
+                    group.setCurrentChoice(false);
+                }
+            }
+
+            // 更新用户表登录信息, 日志记录
+            user.setLoginStatus(1);
+            user.setLoginCount(user.getLoginCount() == null ? 1 : user.getLoginCount() + 1);
+            user.setLastLoginTime(now);
+            user.setLastLoginIp(ip);
+            int update = sqlManager.updateTemplateById(user);
+            if (update < 1){
+                throw new BaseException(ErrorCodeEnum.DB_UPDATE_EXCEPTION);
+            }
+
+            // 查询用户头像信息
+            String portraitUrl = "";
+            if (user.getPortraitUrlId() != null){
+                Attach attach = sqlManager.lambdaQuery(Attach.class).andEq(Attach::getId, user.getPortraitUrlId()).single();
+                portraitUrl = attach != null ? "" : attach.getUrlName();
+            }
+
+            // 返回用户登录信息
+            loginUser.setLoginStatus(true);
+            loginUser.setUserId(user.getId());
+            loginUser.setNickname(user.getNickname());
+            loginUser.setModifiedFlag(user.getModifiedFlag());
+            loginUser.setLoginTime(now);
+            loginUser.setPortraitUrl(portraitUrl);
+            loginUser.setUserGroups(userGroups);
+        }else {
+           // 账号或密码错误
+            loginUser.setLoginStatus(false);
+        }
+
+        return loginUser;
+    }
+
+
+    @Override
+    @Transactional
+    public boolean register(JSONObject object) {
+        // 再次验证账号
+        if (!verificationPhoneNumber(object.getString("telephone"))){
+            throw new BaseException(ErrorCodeEnum.USER_HAVE_BEEN_REGISTERED);
+        }
+
+        // 验证短信是否通过 todo 缓存msgId状态
+        String msgId = object.getString("msgId");
+
+        User user = saveUser(object);
+        return saveTenantCompany(object, user);
+    }
+
+
+    @Override
+    public boolean verificationPhoneNumber(String telephone) {
+        User user = sqlManager.lambdaQuery(User.class).andEq(User::getTelephone, telephone).single();
+        if (user == null){
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean forgetPassword(JSONObject object) {
+        // 再次验证账号
+        User user = sqlManager.lambdaQuery(User.class).andEq(User::getTelephone, object.getString("telephone")).single();
+        if (user == null){
+            throw new BaseException(ErrorCodeEnum.USER_INVALID);
+        }
+
+        // 验证短信是否通过 todo 缓存msgId状态，统一一个service
+        String msgId = object.getString("msgId");
+
+        // 修改密码
+        user.setPassword(PasswordProvider.encrypt(object.getString("password")));
+        user.setMtime(new Date());
+        user.setModifiedFlag(false);
+        int update = sqlManager.updateTemplateById(user);
+        if (update < 1){
+            throw new BaseException(ErrorCodeEnum.DB_UPDATE_EXCEPTION);
+        }
+        return true;
+    }
+
+
+    public User saveUser(JSONObject object){
+        User user = new User();
+        Date date = new Date();
+        user.setId(LongIdGen.get().nextId());
+        user.setUsername("0");
+        user.setTelephone(object.getString("telephone"));
+        user.setNickname(object.getString("nickname"));
+        user.setPassword(PasswordProvider.encrypt(object.getString("password")));
+
+        user.setGender(0);
+        user.setAccountStatus(1);
+        user.setLoginCount(0);
+        user.setRegisterTime(date);
+        user.setLoginStatus(0);
+        user.setModifiedFlag(false);
+        user.setCtime(date);
+        user.setMtime(date);
+
+        int insert = sqlManager.insert(user);
+        if (insert < 1){
+            throw new BaseException(ErrorCodeEnum.DB_INSERT_EXCEPTION);
+        }
+        return user;
+    }
+
+    public boolean saveTenantCompany(JSONObject object, User user) {
+
+        Date date = new Date();
+        long companyId = LongIdGen.get().nextId();
+        long tenantId = LongIdGen.get().nextId();
+        long roleId = LongIdGen.get().nextId();
+
+        Company company = object.toJavaObject(Company.class);
+        company.setName(object.getString("companyName"));
+        company.setId(companyId);
+        company.setCompanyStatus(1);
+        company.setRegisterTime(date);
+        company.setCtime(date);
+        company.setMtime(date);
+        company.setTenantId(tenantId);
+        int insert = sqlManager.insert(company);
+        if (insert < 1){
+            throw new BaseException(ErrorCodeEnum.DB_INSERT_EXCEPTION);
+        }
+
+        Tenant tenant = new Tenant();
+        tenant.setName(object.getString("companyName"));
+        tenant.setUserId(user.getId());
+        tenant.setTenantManager(user.getUsername());
+        tenant.setCompanyId(companyId);
+        tenant.setCompanyName(object.getString("companyName"));
+        tenant.setStatus(true);
+        tenant.setCtime(date);
+        tenant.setMtime(date);
+        tenant.setId(tenantId);
+        int insertTenant = sqlManager.insert(tenant);
+        if (insertTenant < 1){
+            throw new BaseException(ErrorCodeEnum.DB_INSERT_EXCEPTION);
+        }
+
+        GroupAppRole role = new GroupAppRole();
+        role.setCompanyId(companyId);
+        role.setTenantId(tenantId);
+        role.setCtime(date);
+        role.setMtime(date);
+        role.setSeq(1);
+        role.setName(object.getString("companyName")+"租户管理员");
+        role.setRoleType(3);
+        role.setEnableFlag(true);
+        role.setId(roleId);
+        int insertRole = sqlManager.insert(role);
+        if (insertRole < 1){
+            throw new BaseException(ErrorCodeEnum.DB_INSERT_EXCEPTION);
+        }
+
+        RelUserGroupRole userGroupRole = new RelUserGroupRole();
+        userGroupRole.setCompanyId(companyId);
+        userGroupRole.setRoleId(roleId);
+        userGroupRole.setTenantId(tenantId);
+        userGroupRole.setUserId(user.getId());
+        userGroupRole.setCtime(date);
+        userGroupRole.setMtime(date);
+        userGroupRole.setId(LongIdGen.get().nextId());
+        int insertUserGroupRole = sqlManager.insert(userGroupRole);
+        if (insertUserGroupRole < 1){
+            throw new BaseException(ErrorCodeEnum.DB_INSERT_EXCEPTION);
+        }
+
+        Department department = new Department();
+        department.setId(LongIdGen.get().nextId());
+        department.setCtime(date);
+        department.setMtime(date);
+        department.setLeftValue(1);
+        department.setRightValue(2);
+        department.setCompanyId(companyId);
+        department.setDescription("");
+        department.setName("总部");
+        department.setTenantId(tenantId);
+        department.setDepartmentStatus(1);
+        int insertDepartment = sqlManager.insert(department);
+        if (insertDepartment < 1){
+            throw new BaseException(ErrorCodeEnum.DB_INSERT_EXCEPTION);
+        }
+
+        return true;
+    }
+
+
+    /**
+     * 获取连续登录次数
+     */
+    private Integer checkPasswordLoginErrorCount(Long userId){
+        // 获取用户最近连续错误密码登录次数(aop是访问结束之后插入日志，不包含本次)
+        List<UserLoginLog> loginLogList = sqlManager.lambdaQuery(UserLoginLog.class)
+                .andEq(UserLoginLog::getUserId, userId)
+                .andEq(UserLoginLog::getLoginMode, 1)
+                .desc(UserLoginLog::getLoginTime).limit(1, 6).select();
+
+        int count = 0;
+        Date lastLoginTime = new Date();
+        if (loginLogList != null && loginLogList.size() != 0){
+            for (UserLoginLog log:loginLogList) {
+                if (log.getLoginStatus() == 1){ // 只是密码匹配错误
+                    count = count + 1;
+                }else {
+                    break;
+                }
+            }
+            lastLoginTime = loginLogList.get(0).getLoginTime();
+        }
+        if (count >= 6 && (new Date().getTime() - lastLoginTime.getTime()) < 1800000){
+            throw new BaseException(ErrorCodeEnum.LOCK_YOUR_ACCOUNT_PLEASE_TRY_IT_IN_30_MINUTES);
+        }
+        return count;
+    }
+}
